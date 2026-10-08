@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="ระดับน้ำในคลองกรุงเทพฯ แบบเรียลไทม์ จากสถานีตรวจวัดของสำนักการระบายน้ำ กทม. ค้นหา กรองตามเขต และหาสถานีใกล้คุณ">
+<meta name="theme-color" content="#0b7a83">
+<title>คลองกรุงเทพฯ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: แผงรายการสถานีซ้าย + แผนที่ขวา (เดสก์ท็อป) / สลับรายการ-แผนที่ด้วยแถบล่าง (มือถือ)
+   โมทีฟ: ไม้วัดระดับน้ำ (staff gauge) ลายแดง-ขาว ที่ติดตั้งตามริมคลองจริง */
+:root{
+  --bg:#eef3f2; --surface:#ffffff; --surface-2:#f6f9f8; --line:#d7e1df; --fg:#0e2a2d; --muted:#557074;
+  --accent:#0b7a83; --accent-ink:#ffffff; --water:#2a9db0; --water-2:#7cc9d4;
+  --ok:#1f9a68; --warn:#d98a12; --crit:#d23f37; --off:#8b979a;
+  --ok-bg:#e3f4ec; --warn-bg:#fcf0dc; --crit-bg:#fbe4e2; --off-bg:#eceff0;
+  --staff:#c8302a; --staff-2:#ffffff; --shadow:0 1px 2px rgba(14,42,45,.06),0 8px 24px rgba(14,42,45,.08);
+  --f-display:"Anuphan","IBM Plex Sans Thai",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:12px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#081517; --surface:#0f2124; --surface-2:#132a2e; --line:#21393d; --fg:#e2eeec; --muted:#8aa5a8;
+  --accent:#3cc0c8; --accent-ink:#04201f; --water:#2f8fa0; --water-2:#1f6573;
+  --ok:#43c38e; --warn:#f0a83a; --crit:#f2675e; --off:#7d8c8f;
+  --ok-bg:#12302a; --warn-bg:#35280f; --crit-bg:#3a1a19; --off-bg:#1b2a2c;
+  --staff:#e0544d; --staff-2:#e9efee; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#081517; --surface:#0f2124; --surface-2:#132a2e; --line:#21393d; --fg:#e2eeec; --muted:#8aa5a8;
+  --accent:#3cc0c8; --accent-ink:#04201f; --water:#2f8fa0; --water-2:#1f6573;
+  --ok:#43c38e; --warn:#f0a83a; --crit:#f2675e; --off:#7d8c8f;
+  --ok-bg:#12302a; --warn-bg:#35280f; --crit-bg:#3a1a19; --off-bg:#1b2a2c;
+  --staff:#e0544d; --staff-2:#e9efee; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35); color-scheme:dark}
+
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--f-data);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+
+.app{height:100%;display:grid;grid-template-columns:minmax(360px,440px) 1fr;grid-template-rows:100%}
+.panel{display:flex;flex-direction:column;min-height:0;background:var(--surface);border-right:1px solid var(--line)}
+.panel-head{padding:18px 20px 14px;display:flex;flex-direction:column;gap:14px;border-bottom:1px solid var(--line)}
+
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:14px;height:40px;border-radius:3px;flex:none;
+  background:repeating-linear-gradient(180deg,var(--staff) 0 5px,var(--staff-2) 5px 10px);box-shadow:inset 0 0 0 1px var(--line)}
+.brand h1{font:700 22px/1.1 var(--f-display);margin:0;letter-spacing:-.01em}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.brand .spacer{flex:1}
+.lang{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;flex:none}
+.lang button{border:0;background:transparent;padding:4px 10px;font-size:12px;font-weight:600;color:var(--muted)}
+.lang button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+
+.live{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 var(--ok);animation:pulse 2s infinite}
+.dot.stale{background:var(--warn);animation:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.preview-note{font-size:12px;background:var(--warn-bg);color:var(--fg);border-radius:8px;padding:6px 10px}
+
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 8px 7px;text-align:left;display:flex;flex-direction:column;gap:1px;position:relative;transition:border-color .15s,background .15s}
+.chip b{font:600 20px/1.1 var(--f-data);font-variant-numeric:tabular-nums}
+.chip span{font-size:12px;color:var(--muted);white-space:nowrap}
+.chip::before{content:"";position:absolute;left:8px;right:8px;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--c)}
+.chip[aria-pressed="true"]{border-color:var(--c);background:var(--cbg)}
+.chip:hover{border-color:var(--c)}
+.s-critical{--c:var(--crit);--cbg:var(--crit-bg)} .s-alert{--c:var(--warn);--cbg:var(--warn-bg)}
+.s-normal{--c:var(--ok);--cbg:var(--ok-bg)} .s-offline{--c:var(--off);--cbg:var(--off-bg)}
+
+.controls{display:flex;flex-wrap:wrap;gap:8px}
+.search{flex:1 1 100%;position:relative}
+.search input{width:100%;box-sizing:border-box;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:9px 12px 9px 36px;font-size:15px}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.controls select,.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:7px 10px;font-size:13.5px;min-width:0}
+.controls select{flex:1 1 140px}
+.btn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn:disabled{opacity:.55;cursor:default}
+
+.list-meta{display:flex;justify-content:space-between;align-items:center;padding:10px 20px 4px;font-size:12.5px;color:var(--muted)}
+.list{flex:1;overflow:auto;padding:4px 12px 16px;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+
+.card{display:grid;grid-template-columns:12px 1fr auto;gap:12px;align-items:center;text-align:left;width:100%;
+  border:1px solid transparent;background:var(--surface-2);border-radius:var(--r);padding:10px 12px 10px 10px}
+.card:hover{border-color:var(--line)}
+.card[aria-current="true"]{border-color:var(--accent);background:var(--surface)}
+.card .name{font-weight:600;font-size:14.5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .sub{font-size:12.5px;color:var(--muted);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap}
+.card .right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.card .lvl{font:600 19px/1 var(--f-data);font-variant-numeric:tabular-nums}
+.card .lvl small{font:500 11px var(--f-body);color:var(--muted);margin-left:2px}
+.card.is-offline .lvl{color:var(--muted)}
+.card > div{min-width:0}
+
+.mini{width:12px;height:44px;border-radius:3px;position:relative;overflow:hidden;background:var(--off-bg);box-shadow:inset 0 0 0 1px var(--line)}
+.mini i{position:absolute;left:0;right:0;bottom:0;background:var(--c)}
+.mini u{position:absolute;left:0;right:0;height:1.5px;background:var(--fg);opacity:.55}
+
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;border-radius:999px;padding:2px 8px;background:var(--cbg);color:var(--c);white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c)}
+.fb{font-size:11.5px;color:var(--muted);white-space:nowrap}
+
+.mapwrap{position:relative;min-width:0;min-height:0}
+#map{position:absolute;inset:0;background:var(--surface-2)}
+.mapwrap.no-tiles #map{background-color:var(--surface-2);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:48px 48px}
+.leaflet-tile-pane{filter:saturate(.55) contrast(.95)}
+.dark-tiles .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.4)}
+.map-legend{position:absolute;left:12px;bottom:12px;z-index:500;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12px;display:flex;gap:10px;flex-wrap:wrap;box-shadow:var(--shadow);max-width:calc(100% - 24px);box-sizing:border-box}
+.map-legend span{display:inline-flex;align-items:center;gap:5px}
+.map-legend i{width:9px;height:9px;border-radius:50%;background:var(--c);display:inline-block}
+.tile-note{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:500;font-size:12px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 12px;color:var(--muted)}
+
+/* แผงรายละเอียดสถานี */
+.detail{position:absolute;z-index:800;top:12px;right:12px;bottom:12px;width:380px;max-width:calc(100% - 24px);background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+.detail-head{padding:16px 16px 12px;display:flex;gap:10px;align-items:flex-start;border-bottom:1px solid var(--line)}
+.detail-head h2{font:600 18px/1.3 var(--f-display);margin:0;text-wrap:balance}
+.detail-head .sub{font-size:13px;color:var(--muted);margin-top:4px}
+.icon-btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;width:32px;height:32px;display:grid;place-items:center;flex:none}
+.detail-body{overflow:auto;padding:14px 16px 18px;display:flex;flex-direction:column;gap:14px}
+.hero{display:grid;grid-template-columns:132px 1fr;gap:14px;align-items:stretch}
+.gauge svg{display:block;width:100%;height:auto}
+.gauge text{font-family:var(--f-data);font-size:10px;fill:var(--muted)}
+.gauge .lbl{font-family:var(--f-body);font-size:10px}
+.readout{display:flex;flex-direction:column;gap:8px;justify-content:center;min-width:0}
+.readout .big{font:600 40px/1 var(--f-data);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.readout .unit{font-size:12.5px;color:var(--muted)}
+.callout{border-radius:10px;padding:9px 11px;font-size:13.5px;background:var(--cbg);line-height:1.45}
+.callout b{color:var(--c)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.stat{background:var(--surface);padding:9px 11px;display:flex;flex-direction:column;gap:1px;min-width:0}
+.stat span{font-size:12px;color:var(--muted)}
+.stat b{font:600 15px var(--f-data);font-variant-numeric:tabular-nums}
+.links{display:flex;gap:8px;flex-wrap:wrap}
+.links a{flex:1 1 140px;text-align:center;text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:13.5px;color:var(--fg);background:var(--surface-2)}
+.links a.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.foot{font-size:12px;color:var(--muted);line-height:1.5}
+.foot a{color:inherit}
+
+.tabbar{display:none}
+
+/* โหมด ระดับน้ำ / เรดาร์ฝน */
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:3px}
+.modes button{border:0;background:transparent;border-radius:9px;padding:7px 8px;font-weight:600;font-size:14px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px}
+.modes button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(14,42,45,.12)}
+.app[data-mode="radar"] .water-only{display:none!important}
+.app:not([data-mode="radar"]) .radar-only{display:none!important}
+.radar-panel{flex:1;overflow:auto;padding:14px 20px 20px;display:flex;flex-direction:column;gap:16px}
+.radar-hero{display:flex;flex-direction:column;gap:4px}
+.radar-hero h2{font:600 18px/1.3 var(--f-display);margin:0}
+.radar-hero p{margin:0;color:var(--muted);font-size:13px}
+.rain-count{display:flex;align-items:baseline;gap:8px;padding:12px 14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
+.rain-count b{font:600 28px/1 var(--f-data);font-variant-numeric:tabular-nums;color:var(--accent)}
+.rain-count span{font-size:13.5px;color:var(--muted)}
+.setting{display:flex;flex-direction:column;gap:6px;font-size:13.5px}
+.setting-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.setting input[type=range]{width:100%;accent-color:var(--accent)}
+.setting input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.legend-bar{height:10px;border-radius:5px;background:linear-gradient(90deg,#9fe3f5,#38b6e8,#0a5fb4,#ffe14d,#ff9a1f,#e8261c,#ff4fd8)}
+.legend-labels{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)}
+.section-label{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.radar-list{display:flex;flex-direction:column;gap:6px}
+.src-links{display:flex;flex-direction:column;gap:6px}
+.src-links a{display:flex;justify-content:space-between;gap:8px;text-decoration:none;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13.5px;background:var(--surface)}
+.src-links a span{color:var(--muted);font-size:12px}
+.rain{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;color:var(--accent);white-space:nowrap}
+.rain.heavy{color:var(--crit)}
+.rain svg{flex:none}
+
+.radar-bar{position:absolute;z-index:700;left:12px;bottom:16px;width:min(460px,calc(100% - 24px));box-sizing:border-box;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.radar-row{display:flex;align-items:center;gap:10px}
+.play{width:38px;height:38px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.radar-row input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.radar-time{font:600 15px var(--f-data);font-variant-numeric:tabular-nums;min-width:52px;text-align:right}
+.radar-sub{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--muted)}
+.radar-sub .legend-bar{flex:1;height:8px;align-self:center}
+.radar-msg{font-size:12.5px;color:var(--muted)}
+.app[data-mode="radar"] .map-legend{display:none}
+
+/* Leaflet (ย่อเฉพาะส่วนที่จำเป็น) */
+.leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}
+.leaflet-container{overflow:hidden;font:inherit;-webkit-tap-highlight-color:transparent;outline:0}
+.leaflet-tile,.leaflet-marker-icon{user-select:none;-webkit-user-drag:none}
+.leaflet-tile{filter:inherit;visibility:hidden}.leaflet-tile-loaded{visibility:inherit}
+.leaflet-container img.leaflet-tile{max-width:none!important;max-height:none!important;width:256px;height:256px;mix-blend-mode:normal}
+.leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}.leaflet-popup-pane{z-index:700}
+.leaflet-map-pane canvas{z-index:100}.leaflet-map-pane svg{z-index:200}
+.leaflet-zoom-animated{transform-origin:0 0}
+.leaflet-zoom-anim .leaflet-zoom-animated{transition:transform .25s cubic-bezier(0,0,.25,1)}
+.leaflet-zoom-anim .leaflet-zoom-hide{visibility:hidden}
+.leaflet-interactive{cursor:pointer}.leaflet-grab{cursor:grab}.leaflet-dragging .leaflet-grab{cursor:move}
+.leaflet-control{position:relative;z-index:800;pointer-events:auto;float:left;clear:both}
+.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}
+.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}
+.leaflet-right .leaflet-control{float:right;margin-right:12px}.leaflet-top .leaflet-control{margin-top:12px}.leaflet-bottom .leaflet-control{margin-bottom:6px}
+.leaflet-bar{border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.leaflet-bar a{display:block;width:34px;height:34px;line-height:34px;text-align:center;text-decoration:none;color:var(--fg);background:var(--surface);font:600 18px var(--f-data);border-bottom:1px solid var(--line)}
+.leaflet-bar a:last-child{border-bottom:0}
+.leaflet-control-attribution{background:color-mix(in srgb,var(--surface) 80%,transparent);color:var(--muted);font-size:10.5px;padding:1px 6px;border-radius:6px;margin-right:6px!important}
+.leaflet-control-attribution a{color:inherit}
+.leaflet-tooltip{position:absolute;padding:4px 8px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;white-space:nowrap;pointer-events:none;box-shadow:var(--shadow);font-size:12.5px}
+.leaflet-tooltip-top{margin-top:-8px}
+
+@media (max-width:760px){
+  .app{grid-template-columns:100%;grid-template-rows:1fr auto}
+  .panel,.mapwrap{grid-row:1;grid-column:1;border-right:0}
+  .app[data-view="map"] .panel{visibility:hidden}
+  .app[data-view="list"] .mapwrap{visibility:hidden}
+  .panel-head{padding:14px 16px 12px}
+  .list{padding:4px 10px 12px}
+  .list-meta{padding:8px 16px 2px}
+  .modes{display:none}
+  .radar-bar{bottom:10px;left:12px;right:12px;width:auto}
+  .tabbar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 16px calc(8px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line);grid-row:2}
+  .tabbar button{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:8px;font-weight:600;font-size:14px}
+  .tabbar button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+  .detail{position:fixed;top:auto;left:0;right:0;bottom:0;width:auto;max-width:none;max-height:86%;border-radius:18px 18px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .summary .chip span{font-size:11px}
+  .controls select{flex:1 1 38%}
+  .btn#near{flex:0 0 auto}
+  .hero{grid-template-columns:112px 1fr}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app" id="app" data-view="list">
+  <aside class="panel" aria-label="รายการสถานี">
+    <div class="panel-head">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <h1 data-i18n="title">คลองกรุงเทพฯ</h1>
+          <p data-i18n="tagline">ระดับน้ำในคลองแบบเรียลไทม์</p>
+        </div>
+        <div class="spacer"></div>
+        <div class="lang" role="group" aria-label="Language">
+          <button type="button" id="lang-th" aria-pressed="true">ไทย</button>
+          <button type="button" id="lang-en" aria-pressed="false">EN</button>
+        </div>
+      </div>
+      <div class="modes" role="group" aria-label="โหมด">
+        <button type="button" id="mode-water" aria-pressed="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M3 14c2 0 2-1.5 4.5-1.5S10 14 12 14s2.5-1.5 4.5-1.5S19 14 21 14M3 19c2 0 2-1.5 4.5-1.5S10 19 12 19s2.5-1.5 4.5-1.5S19 19 21 19M12 3v7"/></svg><span data-i18n="modeWater">ระดับน้ำ</span></button>
+        <button type="button" id="mode-radar" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M7 15a4 4 0 1 1 .9-7.9A5.5 5.5 0 0 1 18.5 9 3 3 0 0 1 18 15H7zM8 18l-1 3M12 18l-1 3M16 18l-1 3"/></svg><span data-i18n="modeRadar">เรดาร์ฝน</span></button>
+      </div>
+      <div class="live water-only"><span class="dot" id="live-dot"></span><span id="live-text">กำลังโหลดข้อมูล…</span></div>
+      <div class="preview-note" id="preview-note" hidden></div>
+      <div class="summary water-only" id="summary" role="group" aria-label="กรองตามสถานะ"></div>
+      <div class="controls water-only">
+        <label class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="q" type="search" autocomplete="off" placeholder="ค้นหาคลอง สถานี หรือเขต">
+        </label>
+        <select id="district" aria-label="เขต"></select>
+        <select id="sort" aria-label="เรียงตาม"></select>
+        <button type="button" class="btn" id="near" aria-pressed="false">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>
+          <span data-i18n="nearMe">ใกล้ฉัน</span>
+        </button>
+      </div>
+    </div>
+    <div class="list-meta water-only"><span id="count"></span><span id="unit-note" data-i18n="unitNote">ระดับน้ำ ม.รทก.</span></div>
+    <div class="list water-only" id="list" role="list"></div>
+    <div class="radar-panel radar-only" id="radar-panel">
+      <div class="radar-hero"><h2 data-i18n="radarTitle">เรดาร์ฝนย้อนหลัง 2 ชั่วโมง</h2><p id="radar-latest"></p></div>
+      <div class="rain-count"><b id="rain-n">–</b><span id="rain-n-label"></span></div>
+      <div class="setting">
+        <div class="setting-row"><label for="radar-opacity" data-i18n="opacity">ความเข้มของภาพเรดาร์</label><span class="num" id="radar-opacity-v"></span></div>
+        <input type="range" id="radar-opacity" min="20" max="100" step="5" value="70">
+      </div>
+      <label class="setting-row" style="font-size:13.5px;cursor:pointer"><span data-i18n="showStations">แสดงสถานีวัดระดับน้ำบนแผนที่</span><input type="checkbox" id="radar-stations" checked style="width:18px;height:18px;accent-color:var(--accent)"></label>
+      <div class="setting"><div class="legend-bar"></div><div class="legend-labels"><span data-i18n="rainLight">ฝนเบา</span><span data-i18n="rainMod">ปานกลาง</span><span data-i18n="rainHeavy">หนักมาก</span></div></div>
+      <div class="section-label" id="rain-list-label" data-i18n="rainList">สถานีที่มีฝนตกขณะนี้</div>
+      <div class="radar-list" id="rain-list"></div>
+      <div class="section-label" data-i18n="moreRadar">เรดาร์ละเอียดสูงของ กทม.</div>
+      <div class="src-links">
+        <a href="https://weather.bangkok.go.th/radar/RadarNongchok.aspx" target="_blank" rel="noopener"><b data-i18n="radarNc">สถานีเรดาร์หนองจอก</b><span>weather.bangkok.go.th ↗</span></a>
+        <a href="https://weather.bangkok.go.th/radar/RadarNongkam.aspx" target="_blank" rel="noopener"><b data-i18n="radarNk">สถานีเรดาร์หนองแขม</b><span>weather.bangkok.go.th ↗</span></a>
+      </div>
+      <p class="foot" data-i18n="radarFoot"></p>
+    </div>
+  </aside>
+
+  <section class="mapwrap" id="mapwrap" aria-label="แผนที่">
+    <div id="map"></div>
+    <div class="tile-note" id="tile-note" hidden></div>
+    <div class="map-legend" id="legend"></div>
+    <div class="radar-bar radar-only" id="radar-bar">
+      <div class="radar-row">
+        <button type="button" class="play" id="radar-play" aria-label="เล่น"></button>
+        <input type="range" id="radar-slider" min="0" max="0" value="0" aria-label="เวลาของภาพเรดาร์">
+        <span class="radar-time" id="radar-time">--:--</span>
+      </div>
+      <div class="radar-sub"><span data-i18n="rainLight">ฝนเบา</span><div class="legend-bar"></div><span data-i18n="rainHeavy">หนักมาก</span></div>
+      <div class="radar-msg" id="radar-msg" hidden></div>
+    </div>
+    <article class="detail" id="detail" hidden aria-live="polite"></article>
+  </section>
+
+  <nav class="tabbar" aria-label="มุมมอง">
+    <button type="button" id="tab-list" aria-pressed="true" data-i18n="tabList">รายการ</button>
+    <button type="button" id="tab-map" aria-pressed="false" data-i18n="tabMap">แผนที่</button>
+    <button type="button" id="tab-radar" aria-pressed="false" data-i18n="modeRadar">เรดาร์ฝน</button>
+  </nav>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+(() => {
+const API_URL = window.CANAL_API || '/api/stations';
+const REFRESH_MS = 60_000;
+const SNAP = window.__SNAPSHOT__ || null;
+
+const T = {
+  th: {
+    title:'คลองกรุงเทพฯ', tagline:'ระดับน้ำในคลองแบบเรียลไทม์', nearMe:'ใกล้ฉัน', tabList:'รายการ', tabMap:'แผนที่',
+    unitNote:'ระดับน้ำ ม.รทก.', search:'ค้นหาคลอง สถานี หรือเขต', allDistricts:'ทุกเขต',
+    sortSeverity:'เรียง: น่าห่วงก่อน', sortDistance:'เรียง: ใกล้ที่สุด', sortName:'เรียง: ชื่อ ก-ฮ', sortLevel:'เรียง: ระดับน้ำสูงสุด',
+    critical:'วิกฤต', alert:'เตือนภัย', normal:'ปกติ', offline:'ขัดข้อง',
+    pump:'สถานีสูบน้ำ', gate:'ประตูระบายน้ำ', lake:'บึงรับน้ำ', canal:'จุดวัดในคลอง',
+    loading:'กำลังโหลดข้อมูล…', updated:(t,a)=>`ข้อมูลล่าสุด ${t} · ${a}`, stale:'แสดงข้อมูลล่าสุดที่มี (ต้นทางไม่ตอบสนอง)',
+    error:'ดึงข้อมูลไม่สำเร็จ จะลองใหม่อัตโนมัติใน 1 นาที', count:(n,t)=>`${n} จาก ${t} สถานี`, none:'ไม่พบสถานีที่ตรงกับเงื่อนไข',
+    ago:(m)=> m==null?'-': m<1?'เมื่อสักครู่': m<60?`${m} นาทีที่แล้ว`: m<1440?`${Math.round(m/60)} ชม. ที่แล้ว`:`${Math.round(m/1440)} วันที่แล้ว`,
+    noData:(m)=>`ไม่มีข้อมูล ${m}`, below:(v)=>`ต่ำกว่าตลิ่ง ${v} ม.`, above:(v)=>`ล้นตลิ่ง ${v} ม.`,
+    level:'ระดับน้ำ', unit:'เมตร รทก.', bank:'ระดับตลิ่ง', warnLv:'ระดับเตือนภัย', critLv:'ระดับวิกฤต', maxToday:'สูงสุดวันนี้', maxYesterday:'สูงสุดเมื่อวาน',
+    outside:'ระดับน้ำนอก (ฝั่งแม่น้ำ)', updatedAt:'เวลาตรวจวัด', km:(d)=> d<1?`${Math.round(d*1000)} ม.`:`${d.toFixed(1)} กม.`,
+    directions:'นำทาง', source:'ดูที่เว็บ กทม.', close:'ปิด', partner:'เครือข่ายร่วม',
+    msgCrit:(d)=>`น้ำสูงเกินระดับวิกฤต${d}`, msgAlert:(d)=>`น้ำสูงเกินระดับเตือนภัย${d} เฝ้าระวังใกล้ชิด`, msgNormal:(d)=>`ระดับน้ำปกติ${d}`, msgOff:'สถานีนี้ไม่ได้ส่งข้อมูลล่าสุด ค่าที่แสดงอาจไม่เป็นปัจจุบัน',
+    fbSuffix:(v)=> v==null?'': v>=0?` ยังต่ำกว่าตลิ่ง ${v.toFixed(2)} ม.`:` สูงกว่าตลิ่ง ${Math.abs(v).toFixed(2)} ม.`,
+    foot:'ข้อมูลจากสถานีตรวจวัดระดับน้ำ สำนักการระบายน้ำ กรุงเทพมหานคร ระดับน้ำอ้างอิงระดับทะเลปานกลาง (ม.รทก.) เว็บไซต์นี้ไม่ใช่เว็บทางการของ กทม.',
+    geoFail:'เปิดตำแหน่งไม่ได้ กรุณาอนุญาตการเข้าถึงตำแหน่งในเบราว์เซอร์', previewNote:(t)=>`ตัวอย่างข้อมูลจริง ณ ${t} (พรีวิว) — เว็บที่ deploy แล้วจะอัปเดตทุก 1 นาที`,
+    tileNote:'พรีวิวนี้ไม่โหลดแผนที่พื้นหลัง (เว็บจริงแสดงได้ตามปกติ)', you:'ตำแหน่งของคุณ',
+    modeWater:'ระดับน้ำ', modeRadar:'เรดาร์ฝน', radarTitle:'เรดาร์ฝนย้อนหลัง 2 ชั่วโมง', opacity:'ความเข้มของภาพเรดาร์', showStations:'แสดงสถานีวัดระดับน้ำบนแผนที่',
+    rainLight:'ฝนเบา', rainMod:'ปานกลาง', rainHeavy:'หนักมาก', rainList:'สถานีที่มีฝนตกขณะนี้', moreRadar:'เรดาร์ละเอียดสูงของ กทม.',
+    radarNc:'สถานีเรดาร์หนองจอก', radarNk:'สถานีเรดาร์หนองแขม', play:'เล่น', pause:'หยุด',
+    radarLatest:(t,a)=>`ภาพล่าสุด ${t} · ${a} · อัปเดตทุก 10 นาที`, rainN:'สถานีวัดระดับน้ำที่มีฝนตกอยู่ตอนนี้', rainNone:'ตอนนี้ไม่มีฝนบริเวณสถานีวัดระดับน้ำ',
+    rainBadge:'ฝนตก', rainHeavyBadge:'ฝนหนัก', rainHere:'ขณะนี้เรดาร์ตรวจพบฝนบริเวณสถานีนี้', rainHereHeavy:'ขณะนี้เรดาร์ตรวจพบฝนหนักบริเวณสถานีนี้',
+    radarErr:'โหลดข้อมูลเรดาร์ไม่สำเร็จ จะลองใหม่อัตโนมัติ', radarPreview:'พรีวิวนี้โหลดภาพเรดาร์ไม่ได้ เว็บที่ deploy แล้วจะแสดงภาพเรดาร์สด',
+    radarFoot:'ภาพเรดาร์รวมจาก RainViewer (rainviewer.com) ความละเอียดราว 1 กม. ย้อนหลัง 2 ชั่วโมงทุก 10 นาที ให้บริการฟรีเพื่อการใช้งานส่วนตัวและการศึกษา ต้องการภาพละเอียดกว่านี้ดูได้ที่เรดาร์ของ กทม. ด้านบน',
+  },
+  en: {
+    title:'Bangkok Canals', tagline:'Live canal water levels', nearMe:'Near me', tabList:'List', tabMap:'Map',
+    unitNote:'Level in m MSL', search:'Search canal, station or district', allDistricts:'All districts',
+    sortSeverity:'Sort: most urgent', sortDistance:'Sort: nearest', sortName:'Sort: name', sortLevel:'Sort: highest level',
+    critical:'Critical', alert:'Alert', normal:'Normal', offline:'Offline',
+    pump:'Pumping station', gate:'Water gate', lake:'Retention pond', canal:'Canal gauge',
+    loading:'Loading data…', updated:(t,a)=>`Latest reading ${t} · ${a}`, stale:'Showing last known data (source not responding)',
+    error:'Could not load data. Retrying automatically in 1 minute.', count:(n,t)=>`${n} of ${t} stations`, none:'No stations match these filters',
+    ago:(m)=> m==null?'-': m<1?'just now': m<60?`${m} min ago`: m<1440?`${Math.round(m/60)} h ago`:`${Math.round(m/1440)} days ago`,
+    noData:(m)=>`No data ${m}`, below:(v)=>`${v} m below bank`, above:(v)=>`${v} m over bank`,
+    level:'Water level', unit:'metres MSL', bank:'Bank level', warnLv:'Alert level', critLv:'Critical level', maxToday:'Max today', maxYesterday:'Max yesterday',
+    outside:'Outer level (river side)', updatedAt:'Measured at', km:(d)=> d<1?`${Math.round(d*1000)} m`:`${d.toFixed(1)} km`,
+    directions:'Directions', source:'View on BMA site', close:'Close', partner:'Partner network',
+    msgCrit:(d)=>`Water is above the critical level.${d}`, msgAlert:(d)=>`Water is above the alert level.${d} Watch closely.`, msgNormal:(d)=>`Water level is normal.${d}`, msgOff:'This station has not reported recently. Values may be out of date.',
+    fbSuffix:(v)=> v==null?'': v>=0?` ${v.toFixed(2)} m below the bank.`:` ${Math.abs(v).toFixed(2)} m over the bank.`,
+    foot:'Data from water level stations of the Department of Drainage and Sewerage, Bangkok Metropolitan Administration. Levels are metres above mean sea level (MSL). This is not an official BMA website.',
+    geoFail:'Location unavailable. Please allow location access in your browser.', previewNote:(t)=>`Real data captured ${t} (preview). The deployed site refreshes every minute.`,
+    tileNote:'Base map tiles are not loaded in this preview (they work on the live site)', you:'Your location',
+    modeWater:'Water level', modeRadar:'Rain radar', radarTitle:'Rain radar, past 2 hours', opacity:'Radar opacity', showStations:'Show water level stations on map',
+    rainLight:'Light', rainMod:'Moderate', rainHeavy:'Very heavy', rainList:'Stations with rain right now', moreRadar:'BMA high-resolution radar',
+    radarNc:'Nong Chok radar', radarNk:'Nong Khaem radar', play:'Play', pause:'Pause',
+    radarLatest:(t,a)=>`Latest frame ${t} · ${a} · updates every 10 min`, rainN:'water level stations with rain right now', rainNone:'No rain over any water level station right now',
+    rainBadge:'Rain', rainHeavyBadge:'Heavy rain', rainHere:'Radar shows rain over this station right now', rainHereHeavy:'Radar shows heavy rain over this station right now',
+    radarErr:'Could not load radar data. Retrying automatically.', radarPreview:'Radar images cannot load in this preview. The deployed site shows live radar.',
+    radarFoot:'Composite radar from RainViewer (rainviewer.com), about 1 km resolution, past 2 hours every 10 minutes. Free for personal and educational use. For more detail, use the BMA radar links above.',
+  }
+};
+const RANK = {critical:0, alert:1, normal:2, offline:3};
+const STATUSES = ['critical','alert','normal','offline'];
+
+const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { return null; } };
+const state = {
+  lang: store('canal.lang') === 'en' ? 'en' : 'th',
+  data: null, error: null, stale: false,
+  statuses: new Set(), district: '', q: '', sort: 'severity',
+  pos: null, selected: null, view: 'list', mode: 'water',
+  rain: new Map(), // id -> 'light' | 'heavy' จากภาพเรดาร์ล่าสุด
+};
+const t = (k, ...a) => { const v = T[state.lang][k]; return typeof v === 'function' ? v(...a) : v; };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (v, sign = true) => v == null ? '–' : (sign && v > 0 ? '+' : '') + v.toFixed(2);
+const nowRef = () => SNAP ? SNAP.fetchedAt : Date.now();
+const fmtTime = (ms, withDate) => ms ? new Date(ms).toLocaleString(state.lang === 'th' ? 'th-TH' : 'en-GB',
+  Object.assign({ timeZone:'Asia/Bangkok', hour:'2-digit', minute:'2-digit' }, withDate ? { day:'numeric', month:'short', year: state.lang==='th' ? '2-digit' : 'numeric' } : {})) : '–';
+const nm = (s) => s.name[state.lang] || s.name.th;
+const dn = (s) => s.district[state.lang] || s.district.th;
+
+function distKm(a, b) {
+  const R = 6371, r = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+  const h = Math.sin(dLat/2)**2 + Math.cos(a.lat*r) * Math.cos(b.lat*r) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+// คะแนนความน่าห่วง: ยิ่งใกล้/เกินระดับวิกฤตหรือตลิ่งยิ่งสูง
+function urgency(s) {
+  if (s.level == null) return -99;
+  if (s.crit != null) return s.level - s.crit;
+  if (s.freeboard != null) return -s.freeboard;
+  return s.level - 5;
+}
+// สัดส่วนน้ำบนไม้วัดเล็ก: ช่วง 2.5 ม. ใต้ตลิ่ง ถึงตลิ่ง
+function staffRange(s) {
+  const top = s.bank ?? (s.crit != null ? s.crit + 0.3 : (s.level ?? 0) + 1);
+  return { top, bottom: top - 2.5 };
+}
+const frac = (v, r) => v == null ? 0 : Math.max(0, Math.min(1, (v - r.bottom) / (r.top - r.bottom)));
+
+/* ---------- data ---------- */
+async function load() {
+  if (SNAP) { state.data = SNAP; render(); return; }
+  try {
+    const res = await fetch(API_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    state.data = await res.json();
+    state.stale = res.headers.get('X-Cache') === 'STALE';
+    state.error = null;
+  } catch (e) {
+    state.error = e;
+  }
+  render();
+}
+
+/* ---------- rain radar (RainViewer) ---------- */
+const RV_API = 'https://api.rainviewer.com/public/weather-maps.json';
+const RV_ZOOM = 7; // API ฟรีให้ภาพสูงสุดที่ zoom 7 แล้ว Leaflet ขยายต่อเอง
+const R = { host: '', frames: [], idx: 0, playing: false, timer: null, layers: new Map(), opacity: 0.7, showStations: true, error: null, loaded: false, frameTime: null };
+const ICON_PLAY = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>';
+const ICON_PAUSE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+const DROP = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5S5 10.2 5 14.5a7 7 0 0 0 14 0C19 10.2 12 2.5 12 2.5z"/></svg>';
+
+async function loadRadar() {
+  if (SNAP) { R.error = 'preview'; renderRadar(); return; }
+  try {
+    const j = await (await fetch(RV_API, { cache: 'no-store' })).json();
+    const frames = (j.radar && j.radar.past) || [];
+    if (!frames.length) throw new Error('no frames');
+    const isNew = !R.frames.length || frames.at(-1).path !== R.frames.at(-1).path;
+    R.host = j.host; R.frames = frames; R.error = null; R.loaded = true;
+    if (isNew) {
+      if (!R.playing) R.idx = frames.length - 1;
+      R.frameTime = frames.at(-1).time * 1000;
+      pruneLayers();
+      await sampleRain(frames.at(-1));
+    }
+  } catch (e) { R.error = e; }
+  renderRadar();
+  if (state.mode === 'radar') showFrame(R.idx);
+  if (state.data) render();
+}
+
+function frameLayer(f) {
+  if (!R.layers.has(f.path)) {
+    R.layers.set(f.path, L.tileLayer(`${R.host}${f.path}/256/{z}/{x}/{y}/2/1_1.png`, {
+      opacity: 0, maxNativeZoom: RV_ZOOM, maxZoom: 19, zIndex: 300,
+      attribution: 'Radar &copy; <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>',
+    }));
+  }
+  return R.layers.get(f.path);
+}
+function pruneLayers() {
+  const keep = new Set(R.frames.map((f) => f.path));
+  for (const [path, l] of R.layers) if (!keep.has(path)) { map?.removeLayer(l); R.layers.delete(path); }
+}
+function hideRadar() { for (const l of R.layers.values()) map?.removeLayer(l); }
+function showFrame(i) {
+  if (!map || !R.frames.length) return;
+  R.idx = Math.max(0, Math.min(R.frames.length - 1, i));
+  R.frames.forEach((f, k) => {
+    const l = frameLayer(f);
+    if (!map.hasLayer(l)) l.addTo(map); // โหลดล่วงหน้าทุกเฟรมเพื่อให้เล่นลื่น
+    l.setOpacity(k === R.idx ? R.opacity : 0);
+  });
+  $('radar-slider').max = R.frames.length - 1;
+  $('radar-slider').value = R.idx;
+  $('radar-time').textContent = fmtTime(R.frames[R.idx].time * 1000);
+}
+function setPlaying(on) {
+  R.playing = on;
+  clearInterval(R.timer);
+  $('radar-play').innerHTML = on ? ICON_PAUSE : ICON_PLAY;
+  $('radar-play').setAttribute('aria-label', t(on ? 'pause' : 'play'));
+  if (!on) return;
+  let hold = 0;
+  R.timer = setInterval(() => {
+    if (R.idx === R.frames.length - 1 && hold++ < 3) return; // ค้างเฟรมล่าสุดสักครู่
+    hold = 0;
+    showFrame(R.idx === R.frames.length - 1 ? 0 : R.idx + 1);
+  }, 550);
+}
+
+// อ่านค่าสีจากภาพเรดาร์ล่าสุด ณ ตำแหน่งสถานี เพื่อบอกว่าตรงไหนฝนตกอยู่
+async function sampleRain(frame) {
+  if (!state.data || !frame) return;
+  const n = 2 ** RV_ZOOM, rad = Math.PI / 180;
+  const pts = state.data.stations.filter((s) => s.lat != null).map((s) => {
+    const x = (s.lng + 180) / 360 * n * 256;
+    const y = (1 - Math.log(Math.tan(s.lat * rad) + 1 / Math.cos(s.lat * rad)) / Math.PI) / 2 * n * 256;
+    return { id: s.id, tx: Math.floor(x / 256), ty: Math.floor(y / 256), px: Math.floor(x % 256), py: Math.floor(y % 256) };
+  });
+  const tiles = new Map();
+  await Promise.all([...new Set(pts.map((p) => `${p.tx}/${p.ty}`))].map(async (key) => {
+    try {
+      const blob = await (await fetch(`${R.host}${frame.path}/256/${RV_ZOOM}/${key}/2/1_1.png`)).blob();
+      const bmp = await createImageBitmap(blob);
+      const c = document.createElement('canvas'); c.width = c.height = 256;
+      const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(bmp, 0, 0);
+      tiles.set(key, ctx.getImageData(0, 0, 256, 256).data);
+    } catch {}
+  }));
+  const rain = new Map();
+  for (const p of pts) {
+    const d = tiles.get(`${p.tx}/${p.ty}`); if (!d) continue;
+    let level = null;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { // ดูรอบจุด 3x3 พิกเซล (~3 กม.)
+      const x = p.px + dx, y = p.py + dy; if (x < 0 || y < 0 || x > 255 || y > 255) continue;
+      const i = (y * 256 + x) * 4;
+      if (d[i + 3] < 40) continue;
+      const warm = d[i] > 170 && d[i] > d[i + 2]; // โทนเหลือง-แดง-ชมพู = ฝนหนัก
+      level = warm ? 'heavy' : (level || 'light');
+    }
+    if (level) rain.set(p.id, level);
+  }
+  state.rain = rain;
+}
+
+function rainBadge(s) {
+  const r = state.rain.get(s.id);
+  return r ? `<span class="rain ${r}">${DROP}${t(r === 'heavy' ? 'rainHeavyBadge' : 'rainBadge')}</span>` : '';
+}
+
+function renderRadar() {
+  const msg = $('radar-msg');
+  msg.hidden = !R.error;
+  if (R.error) msg.textContent = R.error === 'preview' ? t('radarPreview') : t('radarErr');
+  $('radar-latest').textContent = R.frameTime ? t('radarLatest', fmtTime(R.frameTime), t('ago', Math.round((Date.now() - R.frameTime) / 60000))) : (R.error === 'preview' ? t('radarPreview') : t('loading'));
+  $('radar-opacity-v').textContent = Math.round(R.opacity * 100) + '%';
+  $('radar-play').innerHTML = R.playing ? ICON_PAUSE : ICON_PLAY;
+  const list = (state.data?.stations || []).filter((s) => state.rain.has(s.id))
+    .sort((a, b) => (state.rain.get(a.id) === 'heavy' ? 0 : 1) - (state.rain.get(b.id) === 'heavy' ? 0 : 1) || RANK[a.status] - RANK[b.status] || urgency(b) - urgency(a));
+  $('rain-n').textContent = R.loaded ? list.length : '–';
+  $('rain-n-label').textContent = R.loaded && !list.length ? t('rainNone') : t('rainN');
+  $('rain-list-label').hidden = !list.length;
+  $('rain-list').innerHTML = list.slice(0, 60).map(cardHTML).join('');
+}
+
+function setMode(m) {
+  state.mode = m;
+  $('app').dataset.mode = m;
+  $('mode-water').setAttribute('aria-pressed', m === 'water');
+  $('mode-radar').setAttribute('aria-pressed', m === 'radar');
+  if (m === 'radar') { if (!R.loaded && !R.error) loadRadar(); showFrame(R.idx); }
+  else { setPlaying(false); hideRadar(); }
+  setView(m === 'radar' && matchMedia('(max-width:760px)').matches ? 'map' : state.view);
+  render();
+}
+
+/* ---------- filtering ---------- */
+function visible() {
+  if (!state.data) return [];
+  const q = state.q.trim().toLowerCase();
+  let list = state.data.stations.filter((s) =>
+    (!state.statuses.size || state.statuses.has(s.status)) &&
+    (!state.district || String(s.district.id) === state.district) &&
+    (!q || [s.name.th, s.name.en, s.district.th, s.district.en].some((x) => x && x.toLowerCase().includes(q))));
+  if (state.pos) list.forEach((s) => { s._d = distKm(state.pos, s); });
+  const by = {
+    severity: (a, b) => RANK[a.status] - RANK[b.status] || urgency(b) - urgency(a),
+    distance: (a, b) => (a._d ?? 1e9) - (b._d ?? 1e9),
+    name: (a, b) => nm(a).localeCompare(nm(b), state.lang),
+    level: (a, b) => (b.level ?? -99) - (a.level ?? -99),
+  }[state.sort];
+  return list.sort(by);
+}
+
+/* ---------- render ---------- */
+function renderStatic() {
+  document.documentElement.lang = state.lang;
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  $('q').placeholder = t('search');
+  $('lang-th').setAttribute('aria-pressed', state.lang === 'th');
+  $('lang-en').setAttribute('aria-pressed', state.lang === 'en');
+  const sort = $('sort');
+  sort.innerHTML = ['severity','distance','level','name'].map((k) =>
+    `<option value="${k}" ${k === 'distance' && !state.pos ? 'disabled' : ''}>${t('sort' + k[0].toUpperCase() + k.slice(1))}</option>`).join('');
+  sort.value = state.sort;
+  $('legend').innerHTML = STATUSES.map((s) => `<span class="s-${s}"><i></i>${t(s)}</span>`).join('');
+}
+
+function renderDistricts() {
+  const sel = $('district');
+  const ds = new Map();
+  (state.data?.stations || []).forEach((s) => ds.set(String(s.district.id), s.district));
+  const opts = [...ds.entries()].sort((a, b) => (a[1][state.lang] || a[1].th).localeCompare(b[1][state.lang] || b[1].th, state.lang));
+  sel.innerHTML = `<option value="">${t('allDistricts')}</option>` + opts.map(([id, d]) => `<option value="${id}">${esc(d[state.lang] || d.th)}</option>`).join('');
+  sel.value = state.district;
+}
+
+function renderSummary() {
+  const c = state.data?.counts || {};
+  $('summary').innerHTML = STATUSES.map((s) =>
+    `<button type="button" class="chip s-${s}" data-status="${s}" aria-pressed="${state.statuses.has(s)}"><b>${c[s] ?? '–'}</b><span>${t(s)}</span></button>`).join('');
+}
+
+function renderLive() {
+  const d = state.data, dot = $('live-dot');
+  dot.classList.toggle('stale', !!(state.error || state.stale || SNAP));
+  if (!d) { $('live-text').textContent = state.error ? t('error') : t('loading'); return; }
+  const age = Math.round((nowRef() - d.dataTime) / 60000);
+  let txt = t('updated', fmtTime(d.dataTime, true), t('ago', age));
+  if (state.stale) txt += ' · ' + t('stale');
+  if (state.error) txt += ' · ' + t('error');
+  $('live-text').textContent = txt;
+  const pn = $('preview-note');
+  pn.hidden = !SNAP;
+  if (SNAP) pn.textContent = t('previewNote', fmtTime(SNAP.fetchedAt, true));
+}
+
+function miniStaff(s) {
+  const r = staffRange(s);
+  const marks = [s.warn, s.crit].filter((v) => v != null && v > r.bottom && v < r.top)
+    .map((v) => `<u style="bottom:${(frac(v, r) * 100).toFixed(1)}%"></u>`).join('');
+  return `<div class="mini s-${s.status}" aria-hidden="true"><i style="height:${(frac(s.level, r) * 100).toFixed(1)}%"></i>${marks}</div>`;
+}
+
+function cardHTML(s) {
+  const sub = [esc(dn(s)), t(s.kind)];
+  if (s._d != null && state.pos) sub.unshift(`<b>${t('km', s._d)}</b>`);
+  let note = '';
+  if (s.status === 'offline') note = t('noData', t('ago', s.ageMin));
+  else if (s.freeboard != null) note = s.freeboard >= 0 ? t('below', s.freeboard.toFixed(2)) : t('above', Math.abs(s.freeboard).toFixed(2));
+  return `<button type="button" role="listitem" class="card s-${s.status} is-${s.status}" data-id="${s.id}" aria-current="${state.selected === s.id}">
+    ${miniStaff(s)}
+    <div><div class="name">${esc(nm(s))}</div><div class="sub">${sub.map((x) => `<span>${x}</span>`).join('<span aria-hidden="true">·</span>')}</div></div>
+    <div class="right"><span class="lvl num">${fmt(s.level)}<small>ม.</small></span><span class="pill">${t(s.status)}</span>${note ? `<span class="fb">${note}</span>` : ''}${rainBadge(s)}</div>
+  </button>`;
+}
+
+function renderList() {
+  const list = visible();
+  const total = state.data?.stations.length || 0;
+  $('count').textContent = state.data ? t('count', list.length, total) : '';
+  $('list').innerHTML = list.length ? list.slice(0, 400).map(cardHTML).join('') : `<div class="empty">${state.data ? t('none') : t('loading')}</div>`;
+  return list;
+}
+
+/* ---------- map ---------- */
+let map, layer, youMarker, tilesLayer, tileErrors = 0, tileLoads = 0;
+const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const COLOR = (s) => cssVar({critical:'--crit', alert:'--warn', normal:'--ok', offline:'--off'}[s]);
+const isDark = () => getComputedStyle(document.documentElement).colorScheme === 'dark' || cssVar('--bg').toLowerCase() === '#081517';
+
+function initMap() {
+  if (!window.L) return;
+  map = L.map('map', { zoomControl: false, preferCanvas: true, attributionControl: true }).setView([13.765, 100.6], 11);
+  L.control.zoom({ position: 'topright' }).addTo(map);
+  setTiles();
+  layer = L.layerGroup().addTo(map);
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { setTiles(); renderMap(visible()); });
+}
+function setTiles() {
+  if (tilesLayer) map.removeLayer(tilesLayer);
+  // OpenStreetMap ไม่ต้องใช้ API key (CARTO เริ่มบังคับ key แล้ว) โหมดมืดใช้ CSS filter แทน
+  $('mapwrap').classList.toggle('dark-tiles', isDark());
+  tilesLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(map);
+  tilesLayer.on('tileload', () => { tileLoads++; });
+  tilesLayer.on('tileerror', () => {
+    tileErrors++;
+    if (tileErrors > 6 && tileLoads === 0) { $('mapwrap').classList.add('no-tiles'); const n = $('tile-note'); n.textContent = t('tileNote'); n.hidden = false; }
+  });
+}
+function renderMap(list) {
+  if (state.mode === 'radar') list = state.data ? state.data.stations : [];
+  if (!map) return;
+  layer.clearLayers();
+  if (state.mode === 'radar' && !R.showStations) list = [];
+  const order = [...list].sort((a, b) => RANK[b.status] - RANK[a.status]); // วิกฤตวาดทับบนสุด
+  for (const s of order) {
+    if (s.lat == null) continue;
+    const sel = state.selected === s.id;
+    const r = s.status === 'critical' ? 8 : s.status === 'alert' ? 7 : 5.5;
+    const m = L.circleMarker([s.lat, s.lng], {
+      radius: sel ? r + 4 : r, color: sel ? cssVar('--fg') : cssVar('--surface'), weight: sel ? 3 : 1.5,
+      fillColor: COLOR(s.status), fillOpacity: s.status === 'offline' ? 0.6 : 0.95,
+    });
+    m.bindTooltip(`<b>${esc(nm(s))}</b><br>${fmt(s.level)} ม. · ${t(s.status)}`, { direction: 'top' });
+    m.on('click', () => select(s.id, { fromMap: true }));
+    m.addTo(layer);
+  }
+  if (youMarker) youMarker.remove();
+  if (state.pos) {
+    youMarker = L.circleMarker([state.pos.lat, state.pos.lng], { radius: 7, color: '#fff', weight: 3, fillColor: cssVar('--accent'), fillOpacity: 1 })
+      .bindTooltip(t('you')).addTo(map);
+  }
+}
+
+/* ---------- detail ---------- */
+function gaugeSVG(s) {
+  const vals = [s.level, s.bank, s.crit, s.warn, s.maxToday, s.maxYesterday].filter((v) => v != null);
+  if (!vals.length) return '';
+  let top = Math.max(...vals) + 0.3, bot = Math.min(...vals) - 0.4;
+  if (top - bot < 1.6) { const mid = (top + bot) / 2; top = mid + 0.8; bot = mid - 0.8; }
+  const H = 260, W = 132, x0 = 30, sw = 18, pad = 8;
+  const y = (v) => pad + (top - v) / (top - bot) * (H - pad * 2);
+  // ลายไม้วัดระดับน้ำ: แถบสลับทุก 10 ซม. ตัวเลขทุก 50 ซม.
+  let staff = '', ticks = '';
+  const start = Math.floor(bot * 10) / 10;
+  for (let v = start; v < top; v = Math.round((v + 0.1) * 10) / 10) {
+    const i = Math.round(v * 10);
+    if (i % 2 === 0) staff += `<rect x="${x0}" y="${y(v + 0.1).toFixed(1)}" width="${sw}" height="${(y(v) - y(v + 0.1)).toFixed(1)}" fill="var(--staff)"/>`;
+    if (i % 5 === 0) ticks += `<text x="${x0 - 4}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${v.toFixed(1)}</text>`;
+  }
+  const line = (v, color, label, dash) => v == null ? '' :
+    `<line x1="${x0 - 2}" x2="${W - 2}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${color}" stroke-width="1.5" ${dash ? 'stroke-dasharray="4 3"' : ''}/>
+     <text class="lbl" x="${W - 2}" y="${(y(v) - 3).toFixed(1)}" text-anchor="end" style="fill:${color}">${label}</text>`;
+  const wl = s.level != null ? y(s.level) : H;
+  const wave = `M${x0 - 6},${wl.toFixed(1)} q 8,-4 16,0 t 16,0 t 16,0 t 16,0 t 16,0 t 16,0 t 16,0 V${H} H${x0 - 6}Z`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${t('level')} ${fmt(s.level)}">
+    <rect x="${x0}" y="${pad}" width="${sw}" height="${H - pad * 2}" fill="var(--staff-2)" stroke="var(--line)"/>
+    ${staff}${ticks}
+    <path d="${wave}" fill="var(--water)" opacity=".55"/>
+    ${line(s.bank, 'var(--fg)', t('bank'))}
+    ${line(s.crit, 'var(--crit)', t('critical'), true)}
+    ${line(s.warn, 'var(--warn)', t('alert'), true)}
+    ${s.maxToday != null ? `<path d="M${x0 + sw + 2},${y(s.maxToday).toFixed(1)} l6,-4 v8z" fill="var(--muted)"><title>${t('maxToday')}</title></path>` : ''}
+  </svg>`;
+}
+
+function detailHTML(s) {
+  const st = (k, v) => `<div class="stat"><span>${k}</span><b>${v}</b></div>`;
+  const fb = t('fbSuffix', s.freeboard);
+  const msg = { critical: t('msgCrit', fb), alert: t('msgAlert', fb), normal: t('msgNormal', fb), offline: t('msgOff') }[s.status];
+  const stats = [
+    st(t('bank'), fmt(s.bank)), st(t('critLv'), fmt(s.crit)), st(t('warnLv'), fmt(s.warn)),
+    st(t('maxToday'), fmt(s.maxToday)), st(t('maxYesterday'), fmt(s.maxYesterday)),
+    s.levelOut != null ? st(t('outside'), fmt(s.levelOut)) : '',
+    st(t('updatedAt'), `${fmtTime(s.ts, true)}`),
+  ].join('');
+  const gmaps = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
+  const src = s.partner ? 'https://weather.bangkok.go.th/water/' : `https://weather.bangkok.go.th/water/StationDetail?id=${s.id}`;
+  return `<div class="detail-head s-${s.status}">
+      <div style="flex:1;min-width:0"><h2>${esc(nm(s))}</h2>
+      <div class="sub">${esc(dn(s))} · ${t(s.kind)}${s.partner ? ' · ' + t('partner') : ''}${s._d != null && state.pos ? ' · ' + t('km', s._d) : ''}</div></div>
+      <button type="button" class="icon-btn" id="detail-close" aria-label="${t('close')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="detail-body">
+      <div class="hero s-${s.status}">
+        <div class="gauge">${gaugeSVG(s)}</div>
+        <div class="readout">
+          <span class="pill" style="align-self:flex-start">${t(s.status)}</span>
+          <div><div class="big">${fmt(s.level)}</div><div class="unit">${t('level')} (${t('unit')})</div></div>
+          <div class="unit">${t('ago', s.ageMin)}</div>
+        </div>
+      </div>
+      <div class="callout s-${s.status}">${msg}</div>
+      ${state.rain.has(s.id) ? `<div class="rain ${state.rain.get(s.id)}" style="font-size:13.5px">${DROP} ${t(state.rain.get(s.id) === 'heavy' ? 'rainHereHeavy' : 'rainHere')}</div>` : ''}
+      <div class="stats">${stats}</div>
+      <div class="links"><a class="primary" href="${gmaps}" target="_blank" rel="noopener">${t('directions')}</a><a href="${src}" target="_blank" rel="noopener">${t('source')}</a></div>
+      <p class="foot">${t('foot')}</p>
+    </div>`;
+}
+
+function renderDetail() {
+  const el = $('detail');
+  const s = state.data?.stations.find((x) => x.id === state.selected);
+  if (!s) { el.hidden = true; return; }
+  el.innerHTML = detailHTML(s);
+  el.hidden = false;
+  $('detail-close').onclick = () => select(null);
+}
+
+function select(id, { fromMap } = {}) {
+  state.selected = id;
+  try { history.replaceState(null, '', id ? `#s${id}` : location.pathname + location.search); } catch {}
+  const s = state.data?.stations.find((x) => x.id === id);
+  if (s && map) {
+    const narrow = matchMedia('(max-width:760px)').matches;
+    if (narrow && !fromMap) setView('map');
+    map.setView([s.lat, s.lng], Math.max(map.getZoom(), 14), { animate: true });
+    if (!narrow) map.panBy([190, 0], { animate: false });
+  }
+  render({ keepScroll: true });
+  if (!fromMap) return;
+  const card = document.querySelector(`.card[data-id="${id}"]`);
+  card?.scrollIntoView({ block: 'nearest' });
+}
+
+function setView(v) {
+  state.view = v;
+  $('app').dataset.view = v;
+  $('tab-list').setAttribute('aria-pressed', v === 'list');
+  $('tab-map').setAttribute('aria-pressed', v === 'map' && state.mode !== 'radar');
+  $('tab-radar').setAttribute('aria-pressed', state.mode === 'radar');
+  if (v === 'map' && map) setTimeout(() => map.invalidateSize(), 0);
+}
+
+function render() {
+  renderLive();
+  renderSummary();
+  const list = renderList();
+  renderMap(list);
+  renderDetail();
+  renderRadar();
+}
+
+/* ---------- events ---------- */
+$('summary').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-status]'); if (!b) return;
+  const s = b.dataset.status;
+  state.statuses.has(s) ? state.statuses.delete(s) : state.statuses.add(s);
+  render();
+});
+$('list').addEventListener('click', (e) => { const c = e.target.closest('.card'); if (c) select(+c.dataset.id); });
+$('q').addEventListener('input', (e) => { state.q = e.target.value; render(); });
+$('district').addEventListener('change', (e) => { state.district = e.target.value; render(); });
+$('sort').addEventListener('change', (e) => { state.sort = e.target.value; render(); });
+$('tab-list').addEventListener('click', () => { if (state.mode !== 'water') setMode('water'); setView('list'); });
+$('tab-map').addEventListener('click', () => { if (state.mode !== 'water') setMode('water'); setView('map'); });
+$('tab-radar').addEventListener('click', () => { setMode('radar'); setView('map'); });
+$('mode-water').addEventListener('click', () => setMode('water'));
+$('mode-radar').addEventListener('click', () => setMode('radar'));
+$('radar-play').addEventListener('click', () => setPlaying(!R.playing));
+$('radar-slider').addEventListener('input', (e) => { setPlaying(false); showFrame(+e.target.value); });
+$('radar-opacity').addEventListener('input', (e) => { R.opacity = +e.target.value / 100; store('canal.radarOpacity', e.target.value); showFrame(R.idx); renderRadar(); });
+$('radar-stations').addEventListener('change', (e) => { R.showStations = e.target.checked; renderMap(visible()); });
+$('rain-list').addEventListener('click', (e) => { const c = e.target.closest('.card'); if (c) select(+c.dataset.id); });
+const setLang = (l) => { state.lang = l; store('canal.lang', l); renderStatic(); renderDistricts(); render(); };
+$('lang-th').addEventListener('click', () => setLang('th'));
+$('lang-en').addEventListener('click', () => setLang('en'));
+$('near').addEventListener('click', () => {
+  const btn = $('near');
+  if (state.pos) { state.pos = null; state.sort = 'severity'; btn.setAttribute('aria-pressed', 'false'); renderStatic(); render(); return; }
+  if (!navigator.geolocation) { alertGeo(); return; }
+  btn.disabled = true;
+  navigator.geolocation.getCurrentPosition((p) => {
+    btn.disabled = false;
+    state.pos = { lat: p.coords.latitude, lng: p.coords.longitude };
+    state.sort = 'distance';
+    btn.setAttribute('aria-pressed', 'true');
+    renderStatic(); render();
+    map?.setView([state.pos.lat, state.pos.lng], 14);
+  }, () => { btn.disabled = false; alertGeo(); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 120000 });
+});
+function alertGeo() { const lt = $('live-text'); lt.textContent = t('geoFail'); setTimeout(renderLive, 4000); }
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.selected) select(null); });
+
+/* ---------- boot ---------- */
+renderStatic();
+initMap();
+{ const op = +store('canal.radarOpacity'); if (op >= 20 && op <= 100) { R.opacity = op / 100; $('radar-opacity').value = op; } }
+load().then(() => {
+  renderDistricts();
+  loadRadar();
+  if (location.hash === '#radar') setMode('radar');
+  const m = /^#s(\d+)$/.exec(location.hash);
+  if (m) select(+m[1]);
+});
+if (!SNAP) {
+  setInterval(load, REFRESH_MS);
+  setInterval(loadRadar, 5 * 60_000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+  setInterval(renderLive, 30_000);
+}
+})();
+</script>
+</body>
+</html>

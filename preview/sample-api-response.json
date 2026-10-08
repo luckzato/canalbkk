@@ -1,5 +1,10 @@
 {
  "source": "สำนักการระบายน้ำ กรุงเทพมหานคร (weather.bangkok.go.th/water)",
+ "credit": {
+  "th": "ข้อมูล: สำนักการระบายน้ำ กรุงเทพมหานคร",
+  "en": "Data: Drainage and Sewerage Department, Bangkok Metropolitan Administration",
+  "url": "https://weather.bangkok.go.th/water/"
+ },
  "fetchedAt": 1791403500000,
  "dataTime": 1791403200000,
  "counts": {

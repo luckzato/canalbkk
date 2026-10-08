@@ -1,3 +1,4 @@
+import { STATIONS as CATALOG, DISTRICTS } from './catalog.js';
 // แปลงข้อมูลดิบจาก API สำนักการระบายน้ำ กทม. ให้อยู่ในรูปที่หน้าเว็บใช้ง่าย
 // Raw source: POST https://weather.bangkok.go.th/water/PageMap/GoogleMap
 
@@ -85,8 +86,83 @@ export function normalize(rawList, now = Date.now()) {
   const latest = [...freq.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0]?.[0];
   return {
     source: 'สำนักการระบายน้ำ กรุงเทพมหานคร (weather.bangkok.go.th/water)',
+    credit: {
+      th: 'ข้อมูล: สำนักการระบายน้ำ กรุงเทพมหานคร',
+      en: 'Data: Drainage and Sewerage Department, Bangkok Metropolitan Administration',
+      url: 'https://weather.bangkok.go.th/water/',
+    },
     fetchedAt: now,
     dataTime: latest || null,
+    counts,
+    stations,
+  };
+}
+
+// ---------- POPNIX Flood (flood.pop.in.th) ----------
+// ส่งต่อข้อมูลของสำนักการระบายน้ำ กทม. อนุญาตให้นำไปใช้ได้โดยต้องให้เครดิต
+// https://flood.pop.in.th/api/  ·  GET /api_overview.php
+
+export const POPNIX_CREDIT = {
+  th: 'ข้อมูล: สำนักการระบายน้ำ กรุงเทพมหานคร ผ่าน POPNIX Flood (flood.pop.in.th)',
+  en: 'Data: Drainage and Sewerage Department, Bangkok Metropolitan Administration, via POPNIX Flood (flood.pop.in.th)',
+  url: 'https://flood.pop.in.th',
+};
+
+// "2026-10-08 06:05:00" (เวลาไทย ไม่มี timezone) -> ms
+function parseThai(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/.exec(String(s || ''));
+  return m ? Date.UTC(+m[1], m[2] - 1, +m[3], m[4] - 7, +m[5], +(m[6] || 0)) : null;
+}
+
+export function normalizePopnix(j, now = Date.now()) {
+  const list = Array.isArray(j?.stations) ? j.stations : [];
+  const stations = list.filter((p) => p && p.lat && p.lng).map((p) => {
+    const c = CATALOG[p.id];
+    const level = num(p.wl);
+    const warn = sane(num(p.warn));
+    const crit = sane(num(p.crit));
+    const bank = sane(num(p.bank));
+    const ts = parseThai(p.measured_at);
+    const ageMin = ts ? Math.max(0, Math.round((now - ts) / 60000)) : null;
+    let status = p.level === 'crit' ? 'critical' : p.level === 'warn' ? 'alert' : p.level === 'ok' ? 'normal' : deriveStatus(level, warn, crit);
+    if (p.online === false || level === null || (ageMin !== null && ageMin > 60)) status = 'offline';
+    const th = c ? c[0] : String(p.name || '').trim();
+    const d = c ? DISTRICTS[c[2]] : null;
+    return {
+      id: p.id,
+      name: { th, en: (c && c[1]) || th },
+      district: { id: c ? c[2] : 0, th: d ? d[0] : '', en: d ? d[1].replace(/\s+/g, ' ') : '' },
+      kind: c ? c[3] : kindOf(th),
+      lat: num(p.lat),
+      lng: num(p.lng),
+      ts,
+      ageMin,
+      status,
+      level,
+      levelOut: null,
+      bank,
+      warn,
+      crit,
+      warnOut: null,
+      critOut: null,
+      maxToday: sane(num(p.max_day)),
+      maxYesterday: sane(num(p.max_yday)),
+      freeboard: level !== null && bank !== null ? +(bank - level).toFixed(2) : null,
+      partner: c ? !!c[4] : false,
+      trend: ['up', 'down', 'flat'].includes(p.trend) ? p.trend : null,
+      delta: num(p.delta),
+      deltaDay: num(p.delta_day),
+      spark: Array.isArray(p.spark) ? p.spark.map(num) : null, // ~24 จุด ย้อนหลัง 6 ชม.
+    };
+  });
+  const counts = { critical: 0, alert: 0, normal: 0, offline: 0 };
+  for (const s of stations) counts[s.status]++;
+  return {
+    source: POPNIX_CREDIT.th,
+    credit: POPNIX_CREDIT,
+    fetchedAt: now,
+    dataTime: parseThai(j?.summary?.latest) || null,
+    stale: !!j?.summary?.stale,
     counts,
     stations,
   };

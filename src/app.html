@@ -100,6 +100,12 @@ button{cursor:pointer}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;border-radius:999px;padding:2px 8px;background:var(--cbg);color:var(--c);white-space:nowrap}
 .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c)}
 .fb{font-size:11.5px;color:var(--muted);white-space:nowrap}
+.trend{font-size:11px;margin-left:3px;vertical-align:2px}
+.trend.up{color:var(--crit)} .trend.down{color:var(--ok)}
+.credit{font-size:12px;color:var(--muted)} .credit a{color:inherit}
+.spark{display:flex;flex-direction:column;gap:4px}
+.spark svg{display:block;width:100%;height:auto}
+.spark-head{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
 
 .mapwrap{position:relative;min-width:0;min-height:0}
 #map{position:absolute;inset:0;background:var(--surface-2)}
@@ -118,6 +124,7 @@ button{cursor:pointer}
 .detail-head .sub{font-size:13px;color:var(--muted);margin-top:4px}
 .icon-btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;width:32px;height:32px;display:grid;place-items:center;flex:none}
 .detail-body{overflow:auto;padding:14px 16px 18px;display:flex;flex-direction:column;gap:14px}
+.detail-body>*{flex-shrink:0}
 .hero{display:grid;grid-template-columns:132px 1fr;gap:14px;align-items:stretch}
 .gauge svg{display:block;width:100%;height:auto}
 .gauge text{font-family:var(--f-data);font-size:10px;fill:var(--muted)}
@@ -243,6 +250,7 @@ button{cursor:pointer}
         <button type="button" id="mode-radar" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M7 15a4 4 0 1 1 .9-7.9A5.5 5.5 0 0 1 18.5 9 3 3 0 0 1 18 15H7zM8 18l-1 3M12 18l-1 3M16 18l-1 3"/></svg><span data-i18n="modeRadar">เรดาร์ฝน</span></button>
       </div>
       <div class="live water-only"><span class="dot" id="live-dot"></span><span id="live-text">กำลังโหลดข้อมูล…</span></div>
+      <div class="credit water-only" id="credit"></div>
       <div class="preview-note" id="preview-note" hidden></div>
       <div class="summary water-only" id="summary" role="group" aria-label="กรองตามสถานะ"></div>
       <div class="controls water-only">
@@ -326,7 +334,8 @@ const T = {
     directions:'นำทาง', source:'ดูที่เว็บ กทม.', close:'ปิด', partner:'เครือข่ายร่วม',
     msgCrit:(d)=>`น้ำสูงเกินระดับวิกฤต${d}`, msgAlert:(d)=>`น้ำสูงเกินระดับเตือนภัย${d} เฝ้าระวังใกล้ชิด`, msgNormal:(d)=>`ระดับน้ำปกติ${d}`, msgOff:'สถานีนี้ไม่ได้ส่งข้อมูลล่าสุด ค่าที่แสดงอาจไม่เป็นปัจจุบัน',
     fbSuffix:(v)=> v==null?'': v>=0?` ยังต่ำกว่าตลิ่ง ${v.toFixed(2)} ม.`:` สูงกว่าตลิ่ง ${Math.abs(v).toFixed(2)} ม.`,
-    foot:'ข้อมูลจากสถานีตรวจวัดระดับน้ำ สำนักการระบายน้ำ กรุงเทพมหานคร ระดับน้ำอ้างอิงระดับทะเลปานกลาง (ม.รทก.) เว็บไซต์นี้ไม่ใช่เว็บทางการของ กทม.',
+    foot:'ระดับน้ำอ้างอิงระดับทะเลปานกลาง (ม.รทก.) เป็นค่า ณ จุดวัดเท่านั้น เว็บนี้ไม่ใช่เว็บทางการของ กทม. และไม่ใช่ประกาศเตือนภัย โปรดติดตามประกาศจาก กทม. และกรมอุตุนิยมวิทยา',
+    up:'กำลังขึ้น', down:'กำลังลง', flat:'ทรงตัว', last6h:'ระดับน้ำ 6 ชั่วโมงล่าสุด', vsYesterday:(v)=>`เทียบเมื่อวาน ${v>0?'+':''}${v.toFixed(2)} ม.`,
     geoFail:'เปิดตำแหน่งไม่ได้ กรุณาอนุญาตการเข้าถึงตำแหน่งในเบราว์เซอร์', previewNote:(t)=>`ตัวอย่างข้อมูลจริง ณ ${t} (พรีวิว) — เว็บที่ deploy แล้วจะอัปเดตทุก 1 นาที`,
     tileNote:'พรีวิวนี้ไม่โหลดแผนที่พื้นหลัง (เว็บจริงแสดงได้ตามปกติ)', you:'ตำแหน่งของคุณ',
     modeWater:'ระดับน้ำ', modeRadar:'เรดาร์ฝน', radarTitle:'เรดาร์ฝนย้อนหลัง 2 ชั่วโมง', opacity:'ความเข้มของภาพเรดาร์', showStations:'แสดงสถานีวัดระดับน้ำบนแผนที่',
@@ -352,7 +361,8 @@ const T = {
     directions:'Directions', source:'View on BMA site', close:'Close', partner:'Partner network',
     msgCrit:(d)=>`Water is above the critical level.${d}`, msgAlert:(d)=>`Water is above the alert level.${d} Watch closely.`, msgNormal:(d)=>`Water level is normal.${d}`, msgOff:'This station has not reported recently. Values may be out of date.',
     fbSuffix:(v)=> v==null?'': v>=0?` ${v.toFixed(2)} m below the bank.`:` ${Math.abs(v).toFixed(2)} m over the bank.`,
-    foot:'Data from water level stations of the Department of Drainage and Sewerage, Bangkok Metropolitan Administration. Levels are metres above mean sea level (MSL). This is not an official BMA website.',
+    foot:'Levels are metres above mean sea level (MSL) at the gauge only. This is not an official BMA website or an emergency alert. Follow BMA and the Thai Meteorological Department for official warnings.',
+    up:'Rising', down:'Falling', flat:'Steady', last6h:'Water level, last 6 hours', vsYesterday:(v)=>`vs yesterday ${v>0?'+':''}${v.toFixed(2)} m`,
     geoFail:'Location unavailable. Please allow location access in your browser.', previewNote:(t)=>`Real data captured ${t} (preview). The deployed site refreshes every minute.`,
     tileNote:'Base map tiles are not loaded in this preview (they work on the live site)', you:'Your location',
     modeWater:'Water level', modeRadar:'Rain radar', radarTitle:'Rain radar, past 2 hours', opacity:'Radar opacity', showStations:'Show water level stations on map',
@@ -607,9 +617,11 @@ function renderLive() {
   if (!d) { $('live-text').textContent = state.error ? t('error') : t('loading'); return; }
   const age = Math.round((nowRef() - d.dataTime) / 60000);
   let txt = t('updated', fmtTime(d.dataTime, true), t('ago', age));
-  if (state.stale) txt += ' · ' + t('stale');
+  if (state.stale || d.stale) txt += ' · ' + t('stale');
   if (state.error) txt += ' · ' + t('error');
   $('live-text').textContent = txt;
+  const cr = d.credit;
+  $('credit').innerHTML = cr ? `<a href="${esc(cr.url)}" target="_blank" rel="noopener">${esc(cr[state.lang] || cr.th)}</a>` : '';
   const pn = $('preview-note');
   pn.hidden = !SNAP;
   if (SNAP) pn.textContent = t('previewNote', fmtTime(SNAP.fetchedAt, true));
@@ -623,7 +635,7 @@ function miniStaff(s) {
 }
 
 function cardHTML(s) {
-  const sub = [esc(dn(s)), t(s.kind)];
+  const sub = [esc(dn(s)), t(s.kind)].filter(Boolean);
   if (s._d != null && state.pos) sub.unshift(`<b>${t('km', s._d)}</b>`);
   let note = '';
   if (s.status === 'offline') note = t('noData', t('ago', s.ageMin));
@@ -631,7 +643,7 @@ function cardHTML(s) {
   return `<button type="button" role="listitem" class="card s-${s.status} is-${s.status}" data-id="${s.id}" aria-current="${state.selected === s.id}">
     ${miniStaff(s)}
     <div><div class="name">${esc(nm(s))}</div><div class="sub">${sub.map((x) => `<span>${x}</span>`).join('<span aria-hidden="true">·</span>')}</div></div>
-    <div class="right"><span class="lvl num">${fmt(s.level)}<small>ม.</small></span><span class="pill">${t(s.status)}</span>${note ? `<span class="fb">${note}</span>` : ''}${rainBadge(s)}</div>
+    <div class="right"><span class="lvl num">${fmt(s.level)}<small>ม.</small>${s.trend && s.trend !== 'flat' && s.status !== 'offline' ? `<span class="trend ${s.trend}" title="${t(s.trend)}">${s.trend === 'up' ? '▲' : '▼'}</span>` : ''}</span><span class="pill">${t(s.status)}</span>${note ? `<span class="fb">${note}</span>` : ''}${rainBadge(s)}</div>
   </button>`;
 }
 
@@ -728,6 +740,31 @@ function gaugeSVG(s) {
   </svg>`;
 }
 
+function sparkSVG(s) {
+  const pts = (s.spark || []).map((v, i) => [i, v]).filter((p) => p[1] != null);
+  if (pts.length < 3) return '';
+  const vals = pts.map((p) => p[1]);
+  const refs = [s.warn, s.crit].filter((v) => v != null);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  refs.forEach((v) => { if (v > hi && v - hi < 0.5) hi = v; if (v < lo && lo - v < 0.5) lo = v; });
+  if (hi - lo < 0.2) { const m = (hi + lo) / 2; hi = m + 0.1; lo = m - 0.1; }
+  const W = 320, H = 84, px = 34, py = 8, n = (s.spark.length - 1) || 1;
+  const x = (i) => px + i / n * (W - px - 6), y = (v) => py + (hi - v) / (hi - lo) * (H - py * 2);
+  const line = pts.map((p, k) => `${k ? 'L' : 'M'}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join('');
+  const area = `${line}L${x(pts.at(-1)[0]).toFixed(1)},${H - py}L${x(pts[0][0]).toFixed(1)},${H - py}Z`;
+  const ref = (v, c) => v == null || v > hi || v < lo ? '' : `<line x1="${px}" x2="${W - 6}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${c}" stroke-dasharray="4 3" stroke-width="1"/>`;
+  const last = pts.at(-1);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${t('last6h')}">
+    <line x1="${px}" x2="${W - 6}" y1="${H - py}" y2="${H - py}" stroke="var(--line)"/>
+    <text x="${px - 4}" y="${(y(hi) + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--f-data)">${hi.toFixed(2)}</text>
+    <text x="${px - 4}" y="${(y(lo) + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--f-data)">${lo.toFixed(2)}</text>
+    ${ref(s.warn, 'var(--warn)')}${ref(s.crit, 'var(--crit)')}
+    <path d="${area}" fill="var(--water)" opacity=".18"/>
+    <path d="${line}" fill="none" stroke="var(--water)" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="${x(last[0]).toFixed(1)}" cy="${y(last[1]).toFixed(1)}" r="3.5" fill="var(--water)" stroke="var(--surface)" stroke-width="1.5"/>
+  </svg>`;
+}
+
 function detailHTML(s) {
   const st = (k, v) => `<div class="stat"><span>${k}</span><b>${v}</b></div>`;
   const fb = t('fbSuffix', s.freeboard);
@@ -742,7 +779,7 @@ function detailHTML(s) {
   const src = s.partner ? 'https://weather.bangkok.go.th/water/' : `https://weather.bangkok.go.th/water/StationDetail?id=${s.id}`;
   return `<div class="detail-head s-${s.status}">
       <div style="flex:1;min-width:0"><h2>${esc(nm(s))}</h2>
-      <div class="sub">${esc(dn(s))} · ${t(s.kind)}${s.partner ? ' · ' + t('partner') : ''}${s._d != null && state.pos ? ' · ' + t('km', s._d) : ''}</div></div>
+      <div class="sub">${dn(s) ? esc(dn(s)) + ' · ' : ''}${t(s.kind)}${s.partner ? ' · ' + t('partner') : ''}${s._d != null && state.pos ? ' · ' + t('km', s._d) : ''}</div></div>
       <button type="button" class="icon-btn" id="detail-close" aria-label="${t('close')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
     <div class="detail-body">
@@ -756,9 +793,10 @@ function detailHTML(s) {
       </div>
       <div class="callout s-${s.status}">${msg}</div>
       ${state.rain.has(s.id) ? `<div class="rain ${state.rain.get(s.id)}" style="font-size:13.5px">${DROP} ${t(state.rain.get(s.id) === 'heavy' ? 'rainHereHeavy' : 'rainHere')}</div>` : ''}
+      ${sparkSVG(s) ? `<div class="spark"><div class="spark-head"><span>${t('last6h')}</span><span>${s.trend ? t(s.trend) : ''}${s.deltaDay != null ? ' · ' + t('vsYesterday', s.deltaDay) : ''}</span></div>${sparkSVG(s)}</div>` : ''}
       <div class="stats">${stats}</div>
       <div class="links"><a class="primary" href="${gmaps}" target="_blank" rel="noopener">${t('directions')}</a><a href="${src}" target="_blank" rel="noopener">${t('source')}</a></div>
-      <p class="foot">${t('foot')}</p>
+      <p class="foot">${state.data?.credit ? `<a href="${esc(state.data.credit.url)}" target="_blank" rel="noopener">${esc(state.data.credit[state.lang] || state.data.credit.th)}</a><br>` : ''}${t('foot')}</p>
     </div>`;
 }
 

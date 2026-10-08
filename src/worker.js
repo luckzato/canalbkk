@@ -34,7 +34,7 @@ export async function fetchUpstream(fetchImpl = fetch) {
     },
     body: 'payload=TEST_DATA_GOES_HERE',
   });
-  if (!res.ok) throw new Error(`upstream HTTP ${res.status}`);
+  if (!res.ok) {        const h = (k) => res.headers.get(k) || '-';        const snippet = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 160);        throw new Error(`upstream HTTP ${res.status} | server=${h('server')} cf-mitigated=${h('cf-mitigated')} type=${h('content-type')} | ${snippet}`);      }
   const raw = await res.json();
   if (!Array.isArray(raw) || raw.length === 0) throw new Error('upstream returned no stations');
   return normalize(raw);

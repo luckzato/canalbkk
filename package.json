@@ -1,0 +1,16 @@
+{
+  "name": "canalbkk",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "เว็บแสดงระดับน้ำในคลองกรุงเทพฯ แบบเรียลไทม์ จากข้อมูลสำนักการระบายน้ำ กทม.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "npm run build && node scripts/dev.mjs",
+    "dev:worker": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

@@ -167,3 +167,43 @@ export function normalizePopnix(j, now = Date.now()) {
     stations,
   };
 }
+
+// ---------- ปริมาณฝนจากสถานีวัดน้ำฝน (POPNIX /api_rain.php) ----------
+// รวมสถานีของ สสน. กทม. และหน่วยงานอื่น ค่าเป็นมิลลิเมตรสะสม 1 / 3 / 24 ชั่วโมง
+export const RAIN_CREDIT = {
+  th: 'ข้อมูลฝน: สสน. สำนักการระบายน้ำ กทม. และหน่วยงานอื่น ผ่าน POPNIX Flood (flood.pop.in.th)',
+  en: 'Rain gauges: HII, BMA Drainage Department and other agencies, via POPNIX Flood (flood.pop.in.th)',
+  url: 'https://flood.pop.in.th',
+};
+
+export function normalizeRain(j, now = Date.now()) {
+  const list = Array.isArray(j?.stations) ? j.stations : [];
+  const stations = list.filter((p) => p && p.lat && p.lng).map((p) => {
+    const ts = parseThai(p.measured_at);
+    const ageMin = ts ? Math.max(0, Math.round((now - ts) / 60000)) : null;
+    const r = (v) => { const x = num(v); return x === null || x < 0 || x > 1000 ? null : x; };
+    return {
+      code: String(p.code),
+      name: String(p.name || '').trim(),
+      district: String(p.district || '').trim(),
+      province: String(p.province || '').trim(),
+      agency: String(p.agency || '').trim(),
+      lat: num(p.lat),
+      lng: num(p.lng),
+      ts,
+      ageMin,
+      online: p.online !== false && ageMin !== null && ageMin <= 180,
+      r1h: r(p.r1h),
+      r3h: r(p.r3h),
+      r24h: r(p.r24h),
+    };
+  });
+  return {
+    credit: RAIN_CREDIT,
+    fetchedAt: now,
+    dataTime: parseThai(j?.summary?.latest) || null,
+    stale: !!j?.summary?.stale,
+    raining: stations.filter((s) => s.online && s.r1h > 0).length,
+    stations,
+  };
+}

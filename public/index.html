@@ -189,6 +189,33 @@ button{cursor:pointer}
 .radar-sub{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--muted)}
 .radar-sub .legend-bar{flex:1;height:8px;align-self:center}
 .radar-msg{font-size:12.5px;color:var(--muted)}
+.rc0{--rc:var(--off)} .rc1{--rc:#6cc0e8} .rc2{--rc:#2a78cf} .rc3{--rc:#ec9a1a} .rc4{--rc:#d6303a}
+.seg{display:inline-grid;grid-auto-flow:column;gap:2px;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:2px}
+.seg button{border:0;background:transparent;border-radius:7px;padding:3px 9px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(14,42,45,.12)}
+.rank-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.rank{display:flex;flex-direction:column;gap:2px;margin:0;padding:0;list-style:none}
+.rank button{width:100%;display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;text-align:left;border:0;background:transparent;border-radius:9px;padding:7px 6px}
+.rank button:hover{background:var(--surface-2)}
+.rank .no{font:600 13px var(--f-data);color:var(--muted);text-align:center}
+.rank .nm{font-size:13.5px;font-weight:600;line-height:1.3;min-width:0}
+.rank .nm small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.rank .bar{height:4px;border-radius:2px;background:var(--rc);margin-top:4px;min-width:3px}
+.rank .mm{font:600 15px var(--f-data);font-variant-numeric:tabular-nums;color:var(--rc);white-space:nowrap}
+.rank .mm small{font:500 11px var(--f-body);color:var(--muted);margin-left:2px}
+.rank-empty{font-size:13px;color:var(--muted);padding:6px 2px}
+.bar-actions{display:flex;gap:6px;flex-wrap:wrap}
+.chip-btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:5px}
+.chip-btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pin-card{border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.pin-card .pin-title{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:600}
+.pin-card .pin-title button{border:0;background:transparent;color:var(--muted);font-size:12.5px;padding:2px 4px}
+.pin-row{display:flex;justify-content:space-between;gap:10px;color:var(--muted)}
+.pin-row b{color:var(--fg);font-family:var(--f-data);font-variant-numeric:tabular-nums}
+.pin-hint{font-size:12px;color:var(--muted)}
+.bar-rank{max-height:38vh;overflow:auto;border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:6px}
+.pin-icon{background:none;border:0}
+@media (min-width:761px){ .mobile-only{display:none!important} }
 .app[data-mode="radar"] .map-legend{display:none}
 
 /* Leaflet (ย่อเฉพาะส่วนที่จำเป็น) */
@@ -285,6 +312,9 @@ button{cursor:pointer}
       </div>
       <label class="setting-row" style="font-size:13.5px;cursor:pointer"><span data-i18n="showStations">แสดงสถานีวัดระดับน้ำบนแผนที่</span><input type="checkbox" id="radar-stations" checked style="width:18px;height:18px;accent-color:var(--accent)"></label>
       <div class="setting"><div class="legend-bar"></div><div class="legend-labels"><span data-i18n="rainLight">ฝนเบา</span><span data-i18n="rainMod">ปานกลาง</span><span data-i18n="rainHeavy">หนักมาก</span></div></div>
+      <div class="rank-head"><div class="section-label" data-i18n="rankTitle">ฝนสูงสุด 10 อันดับ</div><div class="seg rank-win" role="group" aria-label="ช่วงเวลา"></div></div>
+      <ol class="rank" id="rank-panel"></ol>
+      <div class="credit" id="rain-credit"></div>
       <div class="section-label" id="rain-list-label" data-i18n="rainList">สถานีที่มีฝนตกขณะนี้</div>
       <div class="radar-list" id="rain-list"></div>
       <div class="section-label" data-i18n="moreRadar">เรดาร์ละเอียดสูงของ กทม.</div>
@@ -308,6 +338,16 @@ button{cursor:pointer}
       </div>
       <div class="radar-sub"><span data-i18n="rainLight">ฝนเบา</span><div class="legend-bar"></div><span data-i18n="rainHeavy">หนักมาก</span></div>
       <div class="radar-msg" id="radar-msg" hidden></div>
+      <div class="bar-actions">
+        <button type="button" class="chip-btn" id="pin-me"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span data-i18n="myLocation">ตำแหน่งของฉัน</span></button>
+        <button type="button" class="chip-btn mobile-only" id="bar-rank-btn" aria-pressed="false"><span data-i18n="rankShort">ฝนสูงสุด 10 อันดับ</span></button>
+      </div>
+      <div class="pin-hint" id="pin-hint" data-i18n="pinHint">แตะบนแผนที่เพื่อปักหมุดดูฝน ณ จุดนั้น</div>
+      <div class="pin-card" id="pin-card" hidden></div>
+      <div class="bar-rank mobile-only" id="bar-rank" hidden>
+        <div class="rank-head"><div class="section-label" data-i18n="rankTitle">ฝนสูงสุด 10 อันดับ</div><div class="seg rank-win" role="group" aria-label="ช่วงเวลา"></div></div>
+        <ol class="rank" id="rank-bar"></ol>
+      </div>
     </div>
     <article class="detail" id="detail" hidden aria-live="polite"></article>
   </section>
@@ -352,6 +392,11 @@ const T = {
     radarLatest:(t,a)=>`ภาพล่าสุด ${t} · ${a} · อัปเดตทุก 10 นาที`, rainN:'สถานีวัดระดับน้ำที่มีฝนตกอยู่ตอนนี้', rainNone:'ตอนนี้ไม่มีฝนบริเวณสถานีวัดระดับน้ำ',
     rainBadge:'ฝนตก', rainHeavyBadge:'ฝนหนัก', rainHere:'ขณะนี้เรดาร์ตรวจพบฝนบริเวณสถานีนี้', rainHereHeavy:'ขณะนี้เรดาร์ตรวจพบฝนหนักบริเวณสถานีนี้',
     radarErr:'โหลดข้อมูลเรดาร์ไม่สำเร็จ จะลองใหม่อัตโนมัติ', radarPreview:'พรีวิวนี้โหลดภาพเรดาร์ไม่ได้ เว็บที่ deploy แล้วจะแสดงภาพเรดาร์สด',
+    rankTitle:'ฝนสูงสุด 10 อันดับ', rankShort:'ฝนสูงสุด 10 อันดับ', w1h:'1 ชม.', w3h:'3 ชม.', w24h:'24 ชม.', mm:'มม.',
+    rankEmpty:(w)=>`ไม่มีสถานีวัดน้ำฝนที่วัดฝนได้ในช่วง ${w} ที่ผ่านมา`, rankLoading:'กำลังโหลดข้อมูลสถานีวัดน้ำฝน…', rankErr:'โหลดข้อมูลสถานีวัดน้ำฝนไม่สำเร็จ',
+    myLocation:'ตำแหน่งของฉัน', pinHint:'แตะบนแผนที่เพื่อปักหมุดดูฝน ณ จุดนั้น', pinYou:'ตำแหน่งของคุณ', pinTap:'จุดที่เลือก', clear:'ล้าง',
+    pinRadar:'เรดาร์ตอนนี้', pinNearest:'สถานีวัดฝนใกล้สุด', pinNone:'ไม่มีฝน', rl:'ฝนเบา', rm:'ฝนปานกลาง', rh:'ฝนหนัก',
+    rc1:'เล็กน้อย', rc2:'ปานกลาง', rc3:'หนัก', rc4:'หนักมาก', gauge:'สถานีวัดน้ำฝน',
     radarFoot:'ภาพเรดาร์รวมจาก RainViewer (rainviewer.com) ความละเอียดราว 1 กม. ย้อนหลัง 2 ชั่วโมงทุก 10 นาที ให้บริการฟรีเพื่อการใช้งานส่วนตัวและการศึกษา ต้องการภาพละเอียดกว่านี้ดูได้ที่เรดาร์ของ กทม. ด้านบน',
   },
   en: {
@@ -379,6 +424,11 @@ const T = {
     radarLatest:(t,a)=>`Latest frame ${t} · ${a} · updates every 10 min`, rainN:'water level stations with rain right now', rainNone:'No rain over any water level station right now',
     rainBadge:'Rain', rainHeavyBadge:'Heavy rain', rainHere:'Radar shows rain over this station right now', rainHereHeavy:'Radar shows heavy rain over this station right now',
     radarErr:'Could not load radar data. Retrying automatically.', radarPreview:'Radar images cannot load in this preview. The deployed site shows live radar.',
+    rankTitle:'Top 10 rainfall', rankShort:'Top 10 rainfall', w1h:'1 h', w3h:'3 h', w24h:'24 h', mm:'mm',
+    rankEmpty:(w)=>`No rain gauge recorded rain in the past ${w}`, rankLoading:'Loading rain gauges…', rankErr:'Could not load rain gauge data',
+    myLocation:'My location', pinHint:'Tap the map to drop a pin and check rain there', pinYou:'Your location', pinTap:'Selected point', clear:'Clear',
+    pinRadar:'Radar now', pinNearest:'Nearest rain gauge', pinNone:'No rain', rl:'Light rain', rm:'Moderate rain', rh:'Heavy rain',
+    rc1:'Light', rc2:'Moderate', rc3:'Heavy', rc4:'Very heavy', gauge:'Rain gauge',
     radarFoot:'Composite radar from RainViewer (rainviewer.com), about 1 km resolution, past 2 hours every 10 minutes. Free for personal and educational use. For more detail, use the BMA radar links above.',
   }
 };
@@ -506,39 +556,152 @@ function setPlaying(on) {
   }, 550);
 }
 
-// อ่านค่าสีจากภาพเรดาร์ล่าสุด ณ ตำแหน่งสถานี เพื่อบอกว่าตรงไหนฝนตกอยู่
+// อ่านค่าสีจากภาพเรดาร์ล่าสุด ณ ตำแหน่งใดๆ เพื่อบอกว่าตรงไหนฝนตกอยู่
+const tileCache = new Map(); // `${path}/${tx}/${ty}` -> Promise<Uint8ClampedArray|null>
+function radarTile(frame, tx, ty) {
+  const key = `${frame.path}/${tx}/${ty}`;
+  if (!tileCache.has(key)) {
+    if (tileCache.size > 60) tileCache.clear();
+    tileCache.set(key, (async () => {
+      try {
+        const blob = await (await fetch(`${R.host}${frame.path}/256/${RV_ZOOM}/${tx}/${ty}/2/1_1.png`)).blob();
+        const bmp = await createImageBitmap(blob);
+        const c = document.createElement('canvas'); c.width = c.height = 256;
+        const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(bmp, 0, 0);
+        return ctx.getImageData(0, 0, 256, 256).data;
+      } catch { return null; }
+    })());
+  }
+  return tileCache.get(key);
+}
+function tilePos(lat, lng) {
+  const n = 2 ** RV_ZOOM, rad = Math.PI / 180;
+  const x = (lng + 180) / 360 * n * 256;
+  const y = (1 - Math.log(Math.tan(lat * rad) + 1 / Math.cos(lat * rad)) / Math.PI) / 2 * n * 256;
+  return { tx: Math.floor(x / 256), ty: Math.floor(y / 256), px: Math.floor(x % 256), py: Math.floor(y % 256) };
+}
+// คืนค่า null | 'light' | 'moderate' | 'heavy' จากสีของพิกเซลรอบจุด 3x3 (~3 กม.)
+function levelFromTile(d, px, py) {
+  const order = { light: 1, moderate: 2, heavy: 3 };
+  let level = null;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const x = px + dx, y = py + dy; if (x < 0 || y < 0 || x > 255 || y > 255) continue;
+    const i = (y * 256 + x) * 4;
+    if (d[i + 3] < 40) continue;
+    const warm = d[i] > 170 && d[i] > d[i + 2];          // เหลือง-แดง-ชมพู = ฝนหนัก
+    const v = warm ? 'heavy' : d[i + 1] > 150 ? 'light' : 'moderate'; // ฟ้าอ่อน = เบา, น้ำเงินเข้ม = ปานกลาง
+    if (!level || order[v] > order[level]) level = v;
+  }
+  return level;
+}
+async function rainAt(lat, lng, frame = R.frames.at(-1)) {
+  if (!frame || !R.host) return undefined;
+  const p = tilePos(lat, lng);
+  const d = await radarTile(frame, p.tx, p.ty);
+  return d ? levelFromTile(d, p.px, p.py) : undefined;
+}
 async function sampleRain(frame) {
   if (!state.data || !frame) return;
-  const n = 2 ** RV_ZOOM, rad = Math.PI / 180;
-  const pts = state.data.stations.filter((s) => s.lat != null).map((s) => {
-    const x = (s.lng + 180) / 360 * n * 256;
-    const y = (1 - Math.log(Math.tan(s.lat * rad) + 1 / Math.cos(s.lat * rad)) / Math.PI) / 2 * n * 256;
-    return { id: s.id, tx: Math.floor(x / 256), ty: Math.floor(y / 256), px: Math.floor(x % 256), py: Math.floor(y % 256) };
-  });
-  const tiles = new Map();
-  await Promise.all([...new Set(pts.map((p) => `${p.tx}/${p.ty}`))].map(async (key) => {
-    try {
-      const blob = await (await fetch(`${R.host}${frame.path}/256/${RV_ZOOM}/${key}/2/1_1.png`)).blob();
-      const bmp = await createImageBitmap(blob);
-      const c = document.createElement('canvas'); c.width = c.height = 256;
-      const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(bmp, 0, 0);
-      tiles.set(key, ctx.getImageData(0, 0, 256, 256).data);
-    } catch {}
-  }));
   const rain = new Map();
-  for (const p of pts) {
-    const d = tiles.get(`${p.tx}/${p.ty}`); if (!d) continue;
-    let level = null;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { // ดูรอบจุด 3x3 พิกเซล (~3 กม.)
-      const x = p.px + dx, y = p.py + dy; if (x < 0 || y < 0 || x > 255 || y > 255) continue;
-      const i = (y * 256 + x) * 4;
-      if (d[i + 3] < 40) continue;
-      const warm = d[i] > 170 && d[i] > d[i + 2]; // โทนเหลือง-แดง-ชมพู = ฝนหนัก
-      level = warm ? 'heavy' : (level || 'light');
-    }
-    if (level) rain.set(p.id, level);
-  }
+  await Promise.all(state.data.stations.filter((s) => s.lat != null).map(async (s) => {
+    const lv = await rainAt(s.lat, s.lng, frame);
+    if (lv) rain.set(s.id, lv === 'heavy' ? 'heavy' : 'light');
+  }));
   state.rain = rain;
+}
+
+/* ---------- rain gauges (POPNIX /api_rain.php ผ่าน /api/rain) ---------- */
+const RAIN_API = window.CANAL_RAIN_API || '/api/rain';
+const RAIN_CLASS = { r1h: [0.1, 2.5, 7.5, 20], r3h: [0.1, 5, 15, 35], r24h: [0.1, 10, 35, 90] }; // 24 ชม. ตามเกณฑ์กรมอุตุนิยมวิทยา
+const G = { data: null, error: null, win: null, barOpen: false, markers: new Map() };
+const rainClass = (v, win) => { if (v == null || v < RAIN_CLASS[win][0]) return 0; const th = RAIN_CLASS[win]; return v <= th[1] ? 1 : v <= th[2] ? 2 : v <= th[3] ? 3 : 4; };
+const fmtMm = (v) => v == null ? '–' : v < 10 ? v.toFixed(1) : Math.round(v).toString();
+
+async function loadGauges() {
+  if (SNAP) { G.error = 'preview'; renderRank(); return; }
+  try {
+    const res = await fetch(RAIN_API, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    G.data = await res.json(); G.error = null;
+    if (!G.win) G.win = G.data.raining > 0 ? 'r1h' : 'r24h';
+  } catch (e) { G.error = e; }
+  renderRank();
+  if (state.mode === 'radar') renderMap(visible());
+  if (PIN.at) updatePin();
+}
+function topRain() {
+  const w = G.win || 'r24h';
+  return (G.data?.stations || []).filter((g) => g.online && g[w] > 0).sort((a, b) => b[w] - a[w]).slice(0, 10);
+}
+function renderRank() {
+  const w = G.win || 'r24h';
+  const segs = ['r1h', 'r3h', 'r24h'].map((k) => `<button type="button" data-win="${k}" aria-pressed="${k === w}">${t('w' + k.slice(1))}</button>`).join('');
+  document.querySelectorAll('.rank-win').forEach((el) => { el.innerHTML = segs; });
+  const top = topRain();
+  const max = top.length ? top[0][w] : 1;
+  const html = G.error ? `<li class="rank-empty">${G.error === 'preview' ? t('radarPreview') : t('rankErr')}</li>`
+    : !G.data ? `<li class="rank-empty">${t('rankLoading')}</li>`
+    : !top.length ? `<li class="rank-empty">${t('rankEmpty', t('w' + w.slice(1)))}</li>`
+    : top.map((g, i) => {
+      const c = rainClass(g[w], w);
+      return `<li><button type="button" class="rc${c}" data-gauge="${esc(g.code)}">
+        <span class="no">${i + 1}</span>
+        <span class="nm">${esc(g.name)}<small>${esc([g.district, g.province !== 'กรุงเทพมหานคร' ? g.province : ''].filter(Boolean).join(' · '))} · ${t('rc' + c)}</small><div class="bar" style="width:${Math.max(4, g[w] / max * 100).toFixed(0)}%"></div></span>
+        <span class="mm">${fmtMm(g[w])}<small>${t('mm')}</small></span></button></li>`;
+    }).join('');
+  $('rank-panel').innerHTML = html; $('rank-bar').innerHTML = html;
+  const cr = G.data?.credit;
+  $('rain-credit').innerHTML = cr ? `<a href="${esc(cr.url)}" target="_blank" rel="noopener">${esc(cr[state.lang] || cr.th)}</a>` : '';
+}
+function focusGauge(code) {
+  const g = (G.data?.stations || []).find((x) => x.code === code);
+  if (!g || !map) return;
+  map.setView([g.lat, g.lng], Math.max(map.getZoom(), 13), { animate: true });
+  setTimeout(() => G.markers.get(code)?.openTooltip(), 350);
+}
+function drawGauges() {
+  G.markers.clear();
+  const w = G.win || 'r24h';
+  const list = (G.data?.stations || []).filter((g) => g.online).sort((a, b) => (a[w] || 0) - (b[w] || 0));
+  for (const g of list) {
+    const c = rainClass(g[w], w);
+    const m = L.circleMarker([g.lat, g.lng], {
+      radius: [3, 5, 6.5, 8, 10][c], weight: c ? 1.5 : 1, color: c ? cssVar('--surface') : cssVar('--muted'),
+      fillColor: c ? ['', '#6cc0e8', '#2a78cf', '#ec9a1a', '#d6303a'][c] : cssVar('--surface'), fillOpacity: c ? 0.95 : 0.7,
+    });
+    m.bindTooltip(`<b>${esc(g.name)}</b> · ${t('gauge')}<br>${t('w1h')} ${fmtMm(g.r1h)} · ${t('w3h')} ${fmtMm(g.r3h)} · ${t('w24h')} ${fmtMm(g.r24h)} ${t('mm')}`, { direction: 'top' });
+    m.addTo(layer);
+    G.markers.set(g.code, m);
+  }
+}
+
+/* ---------- หมุดตำแหน่ง: ตำแหน่งของฉัน หรือแตะบนแผนที่ ---------- */
+const PIN = { at: null, src: null, marker: null };
+const PIN_SVG = '<svg width="30" height="38" viewBox="0 0 30 38" aria-hidden="true"><path d="M15 37s12-11.2 12-21.5A12 12 0 0 0 3 15.5C3 25.8 15 37 15 37z" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/><circle cx="15" cy="15" r="4.5" fill="var(--surface)"/></svg>';
+function setPin(lat, lng, src) {
+  PIN.at = { lat, lng }; PIN.src = src;
+  if (map && L.marker && L.divIcon) {
+    if (PIN.marker) PIN.marker.remove();
+    PIN.marker = L.marker([lat, lng], { icon: L.divIcon({ className: 'pin-icon', html: PIN_SVG, iconSize: [30, 38], iconAnchor: [15, 37] }), keyboard: false }).addTo(map);
+  }
+  updatePin();
+}
+function clearPin() { PIN.at = null; PIN.marker?.remove(); PIN.marker = null; updatePin(); }
+async function updatePin() {
+  const card = $('pin-card');
+  $('pin-hint').hidden = !!PIN.at;
+  if (!PIN.at) { card.hidden = true; return; }
+  const { lat, lng } = PIN.at;
+  const lv = await rainAt(lat, lng);
+  const radarTxt = lv === undefined ? '–' : lv ? t({ light: 'rl', moderate: 'rm', heavy: 'rh' }[lv]) : t('pinNone');
+  let near = null, nd = 1e9;
+  for (const g of G.data?.stations || []) { if (!g.online) continue; const d = distKm(PIN.at, g); if (d < nd) { nd = d; near = g; } }
+  card.innerHTML = `<div class="pin-title"><span>${t(PIN.src === 'gps' ? 'pinYou' : 'pinTap')}</span><button type="button" id="pin-clear">${t('clear')}</button></div>
+    <div class="pin-row"><span>${t('pinRadar')}${R.frameTime ? ' (' + fmtTime(R.frameTime) + ')' : ''}</span><b>${radarTxt}</b></div>
+    ${near ? `<div class="pin-row"><span>${t('pinNearest')}: ${esc(near.name)} (${t('km', nd)})</span></div>
+    <div class="pin-row"><span>${t('w1h')} / ${t('w3h')} / ${t('w24h')}</span><b>${fmtMm(near.r1h)} / ${fmtMm(near.r3h)} / ${fmtMm(near.r24h)} ${t('mm')}</b></div>` : ''}`;
+  card.hidden = false;
+  $('pin-clear').onclick = clearPin;
 }
 
 function rainBadge(s) {
@@ -559,6 +722,7 @@ function renderRadar() {
   $('rain-n-label').textContent = R.loaded && !list.length ? t('rainNone') : t('rainN');
   $('rain-list-label').hidden = !list.length;
   $('rain-list').innerHTML = list.slice(0, 60).map(cardHTML).join('');
+  renderRank();
 }
 
 function setMode(m) {
@@ -567,7 +731,8 @@ function setMode(m) {
   $('mode-water').setAttribute('aria-pressed', m === 'water');
   $('mode-radar').setAttribute('aria-pressed', m === 'radar');
   if (m === 'radar') { if (!R.loaded && !R.error) loadRadar(); showFrame(R.idx); }
-  else { setPlaying(false); hideRadar(); }
+  else { setPlaying(false); hideRadar(); PIN.marker?.remove(); PIN.marker = null; }
+  if (m === 'radar' && PIN.at && !PIN.marker) setPin(PIN.at.lat, PIN.at.lng, PIN.src);
   setView(m === 'radar' && matchMedia('(max-width:760px)').matches ? 'map' : state.view);
   render();
 }
@@ -675,6 +840,7 @@ function initMap() {
   L.control.zoom({ position: 'topright' }).addTo(map);
   setTiles();
   layer = L.layerGroup().addTo(map);
+  map.on('click', (e) => { if (state.mode === 'radar' && e.latlng) setPin(e.latlng.lat, e.latlng.lng, 'tap'); });
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { setTiles(); renderMap(visible()); });
 }
 function setTiles() {
@@ -696,6 +862,7 @@ function renderMap(list) {
   if (!map) return;
   layer.clearLayers();
   if (state.mode === 'radar' && !R.showStations) list = [];
+  if (state.mode === 'radar') drawGauges();
   const order = [...list].sort((a, b) => RANK[b.status] - RANK[a.status]); // วิกฤตวาดทับบนสุด
   for (const s of order) {
     if (s.lat == null) continue;
@@ -870,6 +1037,23 @@ $('mode-radar').addEventListener('click', () => setMode('radar'));
 $('radar-play').addEventListener('click', () => setPlaying(!R.playing));
 $('radar-slider').addEventListener('input', (e) => { setPlaying(false); showFrame(+e.target.value); });
 $('radar-opacity').addEventListener('input', (e) => { R.opacity = +e.target.value / 100; store('canal.radarOpacity', e.target.value); showFrame(R.idx); renderRadar(); });
+document.addEventListener('click', (e) => {
+  const w = e.target.closest('.rank-win [data-win]');
+  if (w) { G.win = w.dataset.win; renderRank(); if (state.mode === 'radar') renderMap(visible()); return; }
+  const g = e.target.closest('[data-gauge]');
+  if (g) focusGauge(g.dataset.gauge);
+});
+$('bar-rank-btn').addEventListener('click', () => { G.barOpen = !G.barOpen; $('bar-rank').hidden = !G.barOpen; $('bar-rank-btn').setAttribute('aria-pressed', G.barOpen); });
+$('pin-me').addEventListener('click', () => {
+  if (!navigator.geolocation) { alertGeo(); return; }
+  const btn = $('pin-me'); btn.disabled = true;
+  navigator.geolocation.getCurrentPosition((p) => {
+    btn.disabled = false;
+    state.pos = { lat: p.coords.latitude, lng: p.coords.longitude };
+    setPin(state.pos.lat, state.pos.lng, 'gps');
+    map?.setView([state.pos.lat, state.pos.lng], Math.max(map.getZoom(), 12));
+  }, () => { btn.disabled = false; alertGeo(); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 120000 });
+});
 $('radar-stations').addEventListener('change', (e) => { R.showStations = e.target.checked; renderMap(visible()); });
 $('rain-list').addEventListener('click', (e) => { const c = e.target.closest('.card'); if (c) select(+c.dataset.id); });
 const setLang = (l) => { state.lang = l; store('canal.lang', l); renderStatic(); renderDistricts(); render(); };
@@ -899,6 +1083,7 @@ initMap();
 load().then(() => {
   renderDistricts();
   loadRadar();
+  loadGauges();
   if (location.hash === '#radar') setMode('radar');
   const m = /^#s(\d+)$/.exec(location.hash);
   if (m) select(+m[1]);
@@ -906,6 +1091,7 @@ load().then(() => {
 if (!SNAP) {
   setInterval(load, REFRESH_MS);
   setInterval(loadRadar, 5 * 60_000);
+  setInterval(loadGauges, 5 * 60_000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
   setInterval(renderLive, 30_000);
 }

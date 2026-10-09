@@ -3,8 +3,15 @@
   "installCommand": "echo \"no dependencies needed\"",
   "buildCommand": "node scripts/build.mjs",
   "outputDirectory": "public",
-  "regions": ["sin1"],
+  "regions": [
+    "sin1"
+  ],
   "functions": {
-    "api/stations.js": { "maxDuration": 15 }
+    "api/stations.js": {
+      "maxDuration": 15
+    },
+    "api/rain.js": {
+      "maxDuration": 15
+    }
   }
 }

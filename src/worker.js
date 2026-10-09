@@ -1,10 +1,11 @@
 // Cloudflare Worker: เสิร์ฟหน้าเว็บ (public/) + API /api/stations ที่ดึงจาก กทม. แล้วแคชไว้
-import { normalize, normalizePopnix } from './normalize.js';
+import { normalize, normalizePopnix, normalizeRain } from './normalize.js';
 
 // แหล่งหลัก: POPNIX Flood ส่งต่อข้อมูล กทม. เปิดให้เซิร์ฟเวอร์ดึงได้ (ต้องให้เครดิต)
 // เว็บ กทม. โดยตรงใช้ Cloudflare กันบอท บล็อกเซิร์ฟเวอร์ใน data center จึงเป็นแหล่งสำรองเท่านั้น
 const POPNIX = 'https://flood.pop.in.th/api_overview.php';
 const UPSTREAM = 'https://weather.bangkok.go.th/water/PageMap/GoogleMap';
+const POPNIX_RAIN = 'https://flood.pop.in.th/api_rain.php';
 const FRESH_SECONDS = 60; // ข้อมูลต้นทางอัปเดตทุก ~5 นาที แคช 60 วินาทีพอ
 const STALE_SECONDS = 60 * 60 * 24; // ถ้าต้นทางล่ม ใช้ข้อมูลล่าสุดที่เคยดึงได้ไม่เกิน 24 ชม.
 
@@ -56,6 +57,14 @@ async function fetchBma(fetchImpl) {
   return normalize(raw);
 }
 
+export async function fetchRain(fetchImpl = fetch) {
+  const res = await fetchImpl(POPNIX_RAIN, {
+    headers: { Accept: 'application/json', 'User-Agent': 'canalbkk/1.0 (+https://canalbkk.vercel.app)' },
+  });
+  if (!res.ok) throw new Error(`POPNIX rain HTTP ${res.status}`);
+  return normalizeRain(await res.json());
+}
+
 // ลอง POPNIX ก่อน ถ้าไม่ได้ค่อยลองเว็บ กทม. ตรง
 export async function fetchUpstream(fetchImpl = fetch) {
   const errors = [];
@@ -63,6 +72,20 @@ export async function fetchUpstream(fetchImpl = fetch) {
     try { return await fn(fetchImpl); } catch (e) { errors.push(e.message); }
   }
   throw new Error(errors.join(' · '));
+}
+
+async function handleRain(request, ctx) {
+  const cache = caches.default;
+  const key = new Request(`${new URL(request.url).origin}/__cache/rain`);
+  const hit = await cache.match(key);
+  if (hit) return json(await hit.text(), { maxAge: 120, extra: { 'X-Cache': 'HIT' } });
+  try {
+    const body = JSON.stringify(await fetchRain());
+    ctx.waitUntil(cache.put(key, json(body, { maxAge: 120 })));
+    return json(body, { maxAge: 120, extra: { 'X-Cache': 'MISS' } });
+  } catch (err) {
+    return json({ error: 'ดึงข้อมูลฝนไม่สำเร็จ', detail: String(err.message) }, { status: 502, maxAge: 0 });
+  }
 }
 
 async function handleStations(request, ctx) {
@@ -98,6 +121,7 @@ export default {
     const url = new URL(request.url);
     if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
     if (url.pathname === '/api/stations') return handleStations(request, ctx);
+    if (url.pathname === '/api/rain') return handleRain(request, ctx);
     if (url.pathname.startsWith('/api/')) return json({ error: 'not found' }, { status: 404, maxAge: 0 });
     return env.ASSETS.fetch(request);
   },

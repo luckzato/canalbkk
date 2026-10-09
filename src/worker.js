@@ -122,6 +122,8 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
     if (url.pathname === '/api/stations') return handleStations(request, ctx);
     if (url.pathname === '/api/rain') return handleRain(request, ctx);
+    // ระบบนับคนเข้าเว็บรองรับเฉพาะบน Vercel (ใช้ Upstash Redis)
+    if (url.pathname === '/api/presence') return json({ configured: false, online: null }, { maxAge: 0 });
     if (url.pathname.startsWith('/api/')) return json({ error: 'not found' }, { status: 404, maxAge: 0 });
     return env.ASSETS.fetch(request);
   },

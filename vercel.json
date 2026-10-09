@@ -12,6 +12,12 @@
     },
     "api/rain.js": {
       "maxDuration": 15
+    },
+    "api/presence.js": {
+      "maxDuration": 10
+    },
+    "api/stats.js": {
+      "maxDuration": 10
     }
   }
 }

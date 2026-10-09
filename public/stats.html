@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>สถิติผู้เข้าชม · คลองกรุงเทพฯ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* หน้าสถิติผู้เข้าชม: ใช้ชุดสีเดียวกับหน้าหลัก */
+:root{
+  --bg:#eef3f2; --surface:#ffffff; --surface-2:#f6f9f8; --line:#d7e1df; --grid:#e6edec; --fg:#0e2a2d; --muted:#557074;
+  --accent:#0b7a83; --accent-ink:#ffffff; --live:#d23f37; --err-bg:#fbe4e2;
+  --f-display:"Anuphan","IBM Plex Sans Thai",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#081517; --surface:#0f2124; --surface-2:#132a2e; --line:#21393d; --grid:#1a3034; --fg:#e2eeec; --muted:#8aa5a8;
+  --accent:#3cc0c8; --accent-ink:#04201f; --live:#f2675e; --err-bg:#3a1a19; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#081517; --surface:#0f2124; --surface-2:#132a2e; --line:#21393d; --grid:#1a3034; --fg:#e2eeec; --muted:#8aa5a8;
+  --accent:#3cc0c8; --accent-ink:#04201f; --live:#f2675e; --err-bg:#3a1a19; color-scheme:dark}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:960px;margin:0 auto;padding-inline:16px;padding-block:24px 48px;display:flex;flex-direction:column;gap:20px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.mark{width:12px;height:36px;border-radius:3px;background:repeating-linear-gradient(180deg,#c8302a 0 5px,#fff 5px 10px);box-shadow:inset 0 0 0 1px var(--line)}
+h1{font:700 22px/1.2 var(--f-display);margin:0}
+header p{margin:0;color:var(--muted);font-size:13px}
+header .sp{flex:1}
+header a{color:var(--muted);font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.login{display:flex;flex-direction:column;gap:10px;max-width:420px}
+.login label{font-weight:600}
+.login .row{display:flex;gap:8px}
+.login input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:9px 12px}
+.btn{border:0;background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);padding:6px 12px;font-size:13px}
+.err{background:var(--err-bg);border-radius:10px;padding:9px 12px;font-size:13.5px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.tile span{font-size:13px;color:var(--muted)}
+.tile b{font:600 32px/1.1 var(--f-data);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.tile small{font-size:12px;color:var(--muted)}
+.tile.live b{color:var(--fg)}
+.tile.live span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--live);margin-right:6px;vertical-align:1px;animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--live) 55%,transparent)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.chart-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.chart-head h2{font:600 16px var(--f-display);margin:0}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font-family:var(--f-data);font-size:11px;fill:var(--muted)}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px;box-shadow:0 6px 20px rgba(0,0,0,.12);white-space:nowrap;transform:translate(-50%,-100%);z-index:2}
+.tip b{font-family:var(--f-data)}
+details{font-size:13.5px}
+details summary{cursor:pointer;color:var(--muted)}
+.tbl{overflow-x:auto;margin-top:8px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:6px 10px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--muted);font-size:12.5px}
+.foot{font-size:12.5px;color:var(--muted);margin:0}
+@media (max-width:720px){.tiles{grid-template-columns:repeat(2,1fr)} .tile b{font-size:26px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="mark" aria-hidden="true"></div>
+    <div><h1>สถิติผู้เข้าชม</h1><p>คลองกรุงเทพฯ · อัปเดตอัตโนมัติทุก 10 วินาที</p></div>
+    <div class="sp"></div>
+    <a href="/">กลับหน้าเว็บ</a>
+    <button type="button" class="btn ghost" id="logout" hidden>ออกจากระบบ</button>
+  </header>
+
+  <form class="card login" id="login" hidden>
+    <label for="key">รหัสดูสถิติ</label>
+    <div class="row"><input id="key" type="password" autocomplete="current-password" placeholder="ค่า STATS_KEY ที่ตั้งไว้ใน Vercel" required><button class="btn" type="submit">ดูสถิติ</button></div>
+    <div class="err" id="login-err" hidden></div>
+    <p class="hint">รหัสนี้คือค่า Environment Variable ชื่อ <code>STATS_KEY</code> ที่ตั้งไว้ในโปรเจกต์ Vercel</p>
+  </form>
+
+  <div class="err" id="err" hidden></div>
+
+  <section id="dash" hidden>
+    <div class="tiles">
+      <div class="tile live"><span>กำลังดูอยู่ตอนนี้</span><b id="t-online">–</b><small>เปิดเว็บอยู่ใน 2 นาทีล่าสุด</small></div>
+      <div class="tile"><span>เปิดหน้าวันนี้</span><b id="t-pv">–</b><small id="t-pv-d">&nbsp;</small></div>
+      <div class="tile"><span>ผู้เข้าชมวันนี้</span><b id="t-uv">–</b><small>นับไม่ซ้ำต่อเบราว์เซอร์</small></div>
+      <div class="tile"><span>เปิดหน้า 14 วัน</span><b id="t-sum">–</b><small id="t-avg">&nbsp;</small></div>
+    </div>
+  </section>
+
+  <section class="card" id="chart-card" hidden>
+    <div class="chart-head"><h2>ยอดเปิดหน้ารายวัน (14 วันล่าสุด)</h2><span class="hint" id="updated"></span></div>
+    <div class="chart" id="chart"></div>
+    <details><summary>ดูเป็นตาราง</summary><div class="tbl"><table><thead><tr><th>วันที่</th><th>เปิดหน้า</th><th>ผู้เข้าชม</th></tr></thead><tbody id="tbody"></tbody></table></div></details>
+  </section>
+
+  <p class="foot">ระบบไม่ใช้คุกกี้และไม่เก็บ IP หรือข้อมูลส่วนตัว แต่ละเบราว์เซอร์ได้รหัสสุ่มหนึ่งชุดสำหรับนับผู้เข้าชมไม่ซ้ำ วันตัดยอดตามเวลาไทย</p>
+</div>
+
+<script>
+(() => {
+const $ = (id) => document.getElementById(id);
+const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { return null; } };
+const nf = (n) => Number(n || 0).toLocaleString('th-TH');
+const dayLabel = (d, long) => new Date(Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8))).toLocaleDateString('th-TH', long ? { weekday: 'short', day: 'numeric', month: 'short', year: '2-digit', timeZone: 'UTC' } : { day: 'numeric', month: 'short', timeZone: 'UTC' });
+let key = ls('canal.statsKey'), timer = null, last = null;
+
+function showLogin(msg) {
+  clearInterval(timer);
+  $('login').hidden = false; $('dash').hidden = true; $('chart-card').hidden = true; $('logout').hidden = true;
+  $('login-err').hidden = !msg; if (msg) $('login-err').textContent = msg;
+  $('key').focus();
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/stats?days=14', { headers: { 'x-stats-key': key }, cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 401) { ls('canal.statsKey', null); key = null; showLogin('รหัสไม่ถูกต้อง ลองใหม่อีกครั้ง'); return; }
+    if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+    $('err').hidden = true;
+    $('login').hidden = true; $('dash').hidden = false; $('chart-card').hidden = false; $('logout').hidden = false;
+    render(j);
+  } catch (e) {
+    $('err').hidden = false; $('err').textContent = 'โหลดสถิติไม่สำเร็จ: ' + e.message;
+  }
+}
+
+function render(j) {
+  last = j;
+  const d = j.daily, today = j.today, yday = d.at(-2);
+  $('t-online').textContent = nf(j.online);
+  $('t-pv').textContent = nf(today.pv);
+  $('t-uv').textContent = nf(today.uv);
+  const diff = yday ? today.pv - yday.pv : null;
+  $('t-pv-d').textContent = yday ? `เมื่อวาน ${nf(yday.pv)}` : ' ';
+  const sum = d.reduce((a, x) => a + x.pv, 0);
+  $('t-sum').textContent = nf(sum);
+  $('t-avg').textContent = `เฉลี่ยวันละ ${nf(Math.round(sum / d.length))}`;
+  $('updated').textContent = 'อัปเดต ' + new Date(j.generatedAt).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + (j.memory ? ' · โหมดทดสอบ (ไม่ได้บันทึกถาวร)' : '');
+  $('tbody').innerHTML = [...d].reverse().map((x) => `<tr><td>${dayLabel(x.date, true)}</td><td>${nf(x.pv)}</td><td>${nf(x.uv)}</td></tr>`).join('');
+  drawChart(d);
+}
+
+function niceMax(v) { if (v <= 5) return 5; const p = 10 ** Math.floor(Math.log10(v)); const m = v / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p; }
+
+function drawChart(d) {
+  const el = $('chart');
+  const W = Math.max(320, Math.round(el.clientWidth || 900)), H = W < 560 ? 200 : 260, L = 44, R = 8, T = 12, B = 28;
+  const max = niceMax(Math.max(...d.map((x) => x.pv), 1));
+  const iw = W - L - R, ih = H - T - B, step = iw / d.length, bw = Math.min(36, step * 0.62);
+  const y = (v) => T + ih - v / max * ih;
+  let g = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = max * i / 4, yy = y(v).toFixed(1);
+    g += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="${i ? 'var(--grid)' : 'var(--line)'}"/><text x="${L - 8}" y="${+yy + 4}" text-anchor="end">${nf(v)}</text>`;
+  }
+  const bars = d.map((x, i) => {
+    const cx = L + step * i + step / 2, h = Math.max(0, ih - (y(x.pv) - T)), r = Math.min(4, h / 2, bw / 2);
+    const x0 = cx - bw / 2, y0 = T + ih - h;
+    // ปลายบนโค้ง 4px ฐานตรงชิดแกน
+    const path = h > 0 ? `M${x0},${T + ih}V${y0 + r}Q${x0},${y0} ${x0 + r},${y0}H${x0 + bw - r}Q${x0 + bw},${y0} ${x0 + bw},${y0 + r}V${T + ih}Z` : '';
+    const every = W < 560 ? 4 : 2, label = (d.length - 1 - i) % every === 0 ? `<text x="${cx}" y="${H - 8}" text-anchor="middle">${dayLabel(x.date)}</text>` : '';
+    const isToday = i === d.length - 1;
+    return `<g>${path ? `<path d="${path}" fill="var(--accent)" opacity="${isToday ? 1 : 0.78}"/>` : ''}${label}
+      <rect class="hit" data-i="${i}" x="${L + step * i}" y="${T}" width="${step}" height="${ih}" fill="transparent"/></g>`;
+  }).join('');
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="กราฟยอดเปิดหน้ารายวัน 14 วันล่าสุด">${g}${bars}</svg><div class="tip" id="tip" hidden></div>`;
+  const tip = $('tip'), svg = el.querySelector('svg');
+  const show = (ev) => {
+    const hit = ev.target.closest('.hit'); if (!hit) { tip.hidden = true; return; }
+    const x = d[+hit.dataset.i], box = svg.getBoundingClientRect(), sc = box.width / W;
+    tip.innerHTML = `${dayLabel(x.date, true)}<br>เปิดหน้า <b>${nf(x.pv)}</b> · ผู้เข้าชม <b>${nf(x.uv)}</b>`;
+    tip.style.left = Math.min(box.width - 80, Math.max(80, (L + step * +hit.dataset.i + step / 2) * sc)) + 'px';
+    tip.style.top = (y(x.pv) * sc - 8) + 'px';
+    tip.hidden = false;
+  };
+  svg.addEventListener('pointermove', show);
+  svg.addEventListener('pointerleave', () => { tip.hidden = true; });
+}
+
+$('login').addEventListener('submit', (e) => { e.preventDefault(); key = $('key').value.trim(); if (!key) return; ls('canal.statsKey', key); start(); });
+$('logout').addEventListener('click', () => { ls('canal.statsKey', null); key = null; showLogin(); });
+window.addEventListener('resize', () => { if (last) drawChart(last.daily); });
+
+function start() { clearInterval(timer); load(); timer = setInterval(() => { if (!document.hidden) load(); }, 10_000); }
+key ? start() : showLogin();
+})();
+</script>
+</body>
+</html>
